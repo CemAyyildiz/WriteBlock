@@ -1,47 +1,48 @@
 # WriteBlock 📝
 
-Sui blockchain ve Walrus dağıtık depolama sistemi üzerine kurulu merkeziyetsiz içerik yönetim sistemi (Decentralized CMS).
+Decentralized Content Management System (CMS) built on Sui blockchain with Walrus distributed storage.
 
-## 🌟 Özellikler
+## 🌟 Features
 
-### ⛓️ Blockchain Tabanlı
-- Sui blockchain üzerinde metadata yönetimi
-- Capability pattern ile güvenli yetki kontrolü
-- Değiştirilemez versiyon geçmişi
+### ⛓️ Blockchain-Based
+- Metadata management on Sui blockchain
+- Secure permission control via capability pattern
+- Immutable version history
 
-### 🐋 Dağıtık Depolama
-- Walrus storage ile kalıcı içerik saklama
-- BLOB tabanlı içerik adresleme
-- Sansüre dirençli altyapı
+### 🐋 Distributed Storage
+- Permanent content storage on Walrus
+- BLOB-based content addressing
+- Censorship-resistant infrastructure
 
-### 👥 Rol Tabanlı Erişim
-- **Admin**: Yazar yetkilendirme ve sistem yönetimi
-- **Author**: İçerik oluşturma ve güncelleme
-- **Viewer**: Herkese açık içerik görüntüleme
+### 👥 Role-Based Access
+- **Admin**: Author authorization and system management
+- **Author**: Content creation and updates
+- **Viewer**: Public content access for everyone
 
-## 📁 Proje Yapısı
+## 📁 Project Structure
 
 ```
 WriteBlock/
 ├── contract/              # Sui Move smart contract
 │   ├── sources/
-│   │   └── contract.move # Ana kontrat dosyası
+│   │   └── contract.move # Main contract file
 │   ├── tests/            # Test suite
-│   └── Move.toml         # Move konfigürasyonu
+│   └── Move.toml         # Move configuration
 │
-├── frontend/             # Next.js web uygulaması
+├── frontend/             # Next.js web application
 │   ├── app/              # Next.js App Router
-│   │   ├── viewer/       # Okuma görünümü
-│   │   ├── author/       # Yazma görünümü
-│   │   └── admin/        # Yönetici görünümü
-│   ├── components/       # React bileşenleri
-│   ├── lib/              # Utility fonksiyonlar
+│   │   ├── page.tsx      # Dashboard
+│   │   ├── [slug]/       # Article pages
+│   │   ├── author/       # Writer view
+│   │   └── admin/        # Admin view
+│   ├── components/       # React components
+│   ├── lib/              # Utility functions
 │   └── types/            # TypeScript types
 │
-└── CONTRACT_SUMMARY.md   # Kontrat dokümantasyonu
+└── CONTRACT_SUMMARY.md   # Contract documentation
 ```
 
-## 🚀 Hızlı Başlangıç
+## 🚀 Quick Start
 
 ### Smart Contract
 
@@ -63,16 +64,16 @@ sui client publish --gas-budget 100000000
 ```bash
 cd frontend
 
-# Bağımlılıkları yükle
+# Install dependencies
 npm install
 
-# Geliştirme sunucusunu başlat
+# Start development server
 npm run dev
 
-# Tarayıcıda aç: http://localhost:3000
+# Open in browser: http://localhost:3000
 ```
 
-## 🏗️ Mimari
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -102,54 +103,55 @@ npm run dev
 └─────────────────────────────────────────────┘
 ```
 
-## 🔑 Temel Kavramlar
+## 🔑 Core Concepts
 
 ### Capability Pattern
 
-WriteBlock, Sui'nin capability pattern'ini kullanarak yetki yönetimini sağlar:
+WriteBlock uses Sui's capability pattern for permission management:
 
-- **Admin_Capability**: Sistem yöneticisi yetkisi
-  - Yeni yazar ekleme
-  - Sayfa oluşturma
+- **Admin_Capability**: System administrator authority
+  - Grant author permissions
+  - Create pages
   
-- **Author_Capability**: İçerik yazarı yetkisi
-  - Sayfa oluşturma
-  - İçerik güncelleme
+- **Author_Capability**: Content writer authority
+  - Create pages
+  - Update content
 
-Bu capability'ler:
-- ✅ Kopyalanamaz (non-copyable)
-- ✅ Yok edilemez (non-droppable)
-- ✅ Transfer edilebilir
-- ✅ Adres tabanlı kontrol gerektirmez
+These capabilities are:
+- ✅ Non-copyable
+- ✅ Non-droppable
+- ✅ Transferable
+- ✅ No address-based checks required
 
-### Versiyon Kontrolü
+### Version Control
 
-Her içerik güncellemesi:
-1. Yeni içerik Walrus'a yüklenir → Yeni BLOB ID
-2. Page_Metadata güncellenir
-3. Version numarası otomatik artırılır
-4. Update timestamp güncellenir
+Each content update:
+1. New content uploaded to Walrus → New BLOB ID
+2. Page_Metadata updated
+3. Version number auto-incremented
+4. Update timestamp recorded
 
-### İçerik Akışı
+### Content Flow
 
-**Okuma (Viewer)**:
+**Reading (Viewer)**:
 ```
 Page_Metadata.walrus_blob_id → Walrus → Content → HTML
 ```
 
-**Yazma (Author)**:
+**Writing (Author)**:
 ```
 Markdown Content → Walrus → BLOB ID → Sui TX → Page_Metadata Updated
 ```
 
-## 📚 Dokümantasyon
+## 📚 Documentation
 
-- [Smart Contract Detayları](./CONTRACT_SUMMARY.md)
-- [Frontend Kullanım Kılavuzu](./frontend/README.md)
-- [Sui Move Dokümantasyonu](https://docs.sui.io/build/move)
-- [Walrus Dokümantasyonu](https://docs.walrus.site/)
+- [Smart Contract Details](./CONTRACT_SUMMARY.md)
+- [Frontend Guide](./frontend/README.md)
+- [UI/UX Design System](./UI_UX_REDESIGN.md)
+- [Setup Instructions](./SETUP.md)
+- [Abstraction Layer](./ABSTRACTION_LAYER_SUMMARY.md)
 
-## 🧪 Test Edilmiş Senaryolar
+## 🧪 Tested Scenarios
 
 ### Smart Contract Tests ✅
 - Admin capability grant
@@ -162,85 +164,85 @@ Markdown Content → Walrus → BLOB ID → Sui TX → Page_Metadata Updated
 - Full workflow integration
 
 ### Frontend Tests (Manual)
-- ✅ Viewer: Markdown rendering
-- ✅ Author: Editör ve kaydetme simülasyonu
-- ✅ Admin: Yazar ekleme simülasyonu
+- ✅ Dashboard: Article list and navigation
+- ✅ Article Reader: Markdown rendering
+- ✅ Author: Editor and publishing simulation
+- ✅ Admin: Author authorization simulation
 - ✅ Responsive design
 - ✅ Dark mode
 
-## 🎨 Demo Özellikleri
+## 🎨 Demo Features
 
-Mevcut frontend **demo/mockup** amaçlıdır ve şunları içerir:
+Current frontend is **demo/mockup** and includes:
 
-- ✅ Mock Sui adresleri
-- ✅ Mock Walrus BLOB ID üretimi
-- ✅ Simüle edilmiş blockchain işlemleri
-- ✅ Tam UI/UX akışı
-- ❌ Gerçek Sui wallet bağlantısı yok
-- ❌ Gerçek Walrus upload/download yok
+- ✅ Mock Sui addresses
+- ✅ Mock Walrus BLOB ID generation
+- ✅ Simulated blockchain transactions
+- ✅ Complete UI/UX flow
+- ❌ No real Sui wallet connection
+- ❌ No real Walrus upload/download
 
-## 🚧 Üretim İçin Gereksinimler
+## 🚧 Production Requirements
 
-Frontend'i gerçek blockchain üzerinde çalıştırmak için:
+To run frontend on real blockchain:
 
-1. **Sui Wallet Entegrasyonu**
+1. **Sui Wallet Integration**
    ```typescript
    import { WalletKitProvider } from '@mysten/wallet-kit';
    ```
 
-2. **Sui SDK Kullanımı**
+2. **Sui SDK Usage**
    ```typescript
    import { SuiClient } from '@mysten/sui.js/client';
    import { TransactionBlock } from '@mysten/sui.js/transactions';
    ```
 
-3. **Walrus API Entegrasyonu**
+3. **Walrus API Integration**
    - Upload endpoint
    - Download endpoint
    - BLOB ID validation
 
-4. **Contract Deploy & Adresleri**
+4. **Contract Deployment & Addresses**
    - Package ID
    - CMS_Registry object ID
    - Admin capability transfer
 
-## 🤝 Katkıda Bulunma
+## 🤝 Contributing
 
-1. Fork yapın
-2. Feature branch oluşturun (`git checkout -b feature/yeni-ozellik`)
-3. Değişikliklerinizi commit edin (`git commit -am 'feat: Yeni özellik eklendi'`)
-4. Branch'i push edin (`git push origin feature/yeni-ozellik`)
-5. Pull Request oluşturun
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -am 'feat: Add new feature'`)
+4. Push branch (`git push origin feature/new-feature`)
+5. Create Pull Request
 
-## 📝 Commit Kuralları
+## 📝 Commit Conventions
 
-- `feat:` - Yeni özellik
+- `feat:` - New feature
 - `fix:` - Bug fix
-- `docs:` - Dokümantasyon
+- `docs:` - Documentation
 - `style:` - Formatting
 - `refactor:` - Code refactoring
-- `test:` - Test ekleme/düzeltme
-- `chore:` - Bakım işleri
+- `test:` - Adding/fixing tests
+- `chore:` - Maintenance
 
-## 🔐 Güvenlik
+## 🔐 Security
 
-Güvenlik açıkları için lütfen issue açmak yerine doğrudan iletişime geçin.
+For security vulnerabilities, please contact directly instead of opening an issue.
 
-## 📄 Lisans
+## 📄 License
 
-MIT License - detaylar için [LICENSE](LICENSE) dosyasına bakın.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Teşekkürler
+## 🙏 Acknowledgments
 
-- [Sui Foundation](https://sui.io/) - Blockchain altyapısı
-- [Walrus](https://docs.walrus.site/) - Dağıtık depolama
+- [Sui Foundation](https://sui.io/) - Blockchain infrastructure
+- [Walrus](https://docs.walrus.site/) - Distributed storage
 - [Next.js](https://nextjs.org/) - Frontend framework
 
-## 📞 İletişim
+## 📞 Contact
 
-Sorularınız için issue açabilirsiniz.
+Open an issue for questions or feedback.
 
 ---
 
-**⚠️ Not**: Bu proje demo/eğitim amaçlıdır. Üretim ortamında kullanmadan önce kapsamlı testler yapılmalı ve güvenlik denetiminden geçirilmelidir.
-
+**⚠️ Note**: This project is for demo/educational purposes. Comprehensive testing and security audits should be conducted before production use.

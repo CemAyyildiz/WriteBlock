@@ -48,7 +48,7 @@ export default function Navbar() {
               )}
               <span className="relative z-10 flex items-center gap-2">
                 <span className="text-base">📚</span>
-                <span>Yazılar</span>
+                <span>Articles</span>
               </span>
             </Link>
 
@@ -65,7 +65,7 @@ export default function Navbar() {
               )}
               <span className="relative z-10 flex items-center gap-2">
                 <span className="text-base">✍️</span>
-                <span>Yaz</span>
+                <span>Write</span>
               </span>
             </Link>
 
