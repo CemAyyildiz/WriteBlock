@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import { MOCK_AUTHORS, MOCK_ADDRESSES } from '@/lib/mockData';
 import { Author } from '@/types';
-import { getBlockchainClient } from '@/lib/client';
+import { getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
+import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 
 export default function AdminPage() {
   const [authors, setAuthors] = useState<Author[]>(MOCK_AUTHORS);
@@ -13,6 +14,53 @@ export default function AdminPage() {
   const [isGranting, setIsGranting] = useState(false);
   const [grantSuccess, setGrantSuccess] = useState(false);
   const [txHash, setTxHash] = useState('');
+
+  // Sui wallet integration
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const [adminCapId, setAdminCapId] = useState<string | null>(null);
+  const config = getProviderConfig();
+
+  // Initialize Sui wallet connection
+  useEffect(() => {
+    if (config.wallet === 'sui' && currentAccount) {
+      initializeSuiWallet({
+        account: currentAccount,
+        connect: async () => {},
+        disconnect: async () => {},
+        signAndExecute: async (tx) => {
+          return new Promise((resolve, reject) => {
+            signAndExecuteTransaction(
+              { transaction: tx },
+              {
+                onSuccess: (result) => resolve({ digest: result.digest }),
+                onError: (error) => reject(error),
+              }
+            );
+          });
+        },
+      });
+
+      // Fetch user capabilities
+      const fetchCapabilities = async () => {
+        try {
+          const wallet = getWalletClient();
+          const caps = await wallet.getUserCapabilities(currentAccount.address);
+          
+          if (caps.adminCapId) {
+            setAdminCapId(caps.adminCapId);
+            console.log('✅ Admin capability found:', caps.adminCapId);
+          } else {
+            console.warn('⚠️ No admin capability found for this address');
+          }
+        } catch (error) {
+          console.error('Error fetching capabilities:', error);
+        }
+      };
+
+      fetchCapabilities();
+    }
+  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
 
   const validateAddress = (address: string) => {
     return address.startsWith('0x') && address.length === 66;
@@ -34,16 +82,36 @@ export default function AdminPage() {
       return;
     }
 
+    // Check for Sui mode requirements
+    if (config.blockchain === 'sui') {
+      if (!currentAccount) {
+        alert('Please connect your Sui wallet first');
+        return;
+      }
+      if (!adminCapId) {
+        alert('You need Admin capability to grant author permissions. Only the deployer has admin rights.');
+        return;
+      }
+    }
+
     setIsGranting(true);
     setGrantSuccess(false);
 
     try {
       const blockchainClient = getBlockchainClient();
+      
+      // Use real admin cap ID for Sui, mock for mock mode
+      const capabilityId = config.blockchain === 'sui' ? adminCapId! : 'mock_admin_cap_id';
+      
       const txResult = await blockchainClient.grantAuthorCapability(
-        'mock_admin_cap_id',
+        capabilityId,
         newAuthorAddress
       );
       console.log('✅ Author capability granted:', txResult.txHash);
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Transaction failed');
+      }
       
       const newAuthor: Author = {
         address: newAuthorAddress,
@@ -110,7 +178,10 @@ export default function AdminPage() {
                   Admin Address
                 </div>
                 <div className="font-mono text-lg font-bold text-navy-700 dark:text-navy-300">
-                  {formatAddress(MOCK_ADDRESSES.admin)}
+                  {config.wallet === 'sui' && currentAccount
+                    ? formatAddress(currentAccount.address)
+                    : formatAddress(MOCK_ADDRESSES.admin)
+                  }
                 </div>
               </div>
             </div>
@@ -118,8 +189,8 @@ export default function AdminPage() {
               <div className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
                 Authority Status
               </div>
-              <div className="font-bold text-lg text-purple-700 dark:text-purple-300">
-                Admin_Capability ✓
+              <div className={`font-bold text-lg ${adminCapId ? 'text-purple-700 dark:text-purple-300' : 'text-red-600 dark:text-red-400'}`}>
+                {adminCapId ? 'Admin_Capability ✓' : 'No Admin Capability ⚠️'}
               </div>
             </div>
           </div>

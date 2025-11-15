@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'easymde/dist/easymde.min.css';
 import Navbar from '@/components/Navbar';
 import { MOCK_ADDRESSES, getAllPages } from '@/lib/mockData';
-import { getStorageClient, getBlockchainClient } from '@/lib/client';
+import { getStorageClient, getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
 import { PageMetadata } from '@/types';
+import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 
@@ -24,11 +25,65 @@ export default function AuthorPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [txInfo, setTxInfo] = useState<{ walrusBlobId: string; txHash: string } | null>(null);
 
+  // Sui wallet integration
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const [authorCapId, setAuthorCapId] = useState<string | null>(null);
+  const [registryId, setRegistryId] = useState<string | null>(null);
+  const config = getProviderConfig();
+
+  // Initialize Sui wallet connection
+  useEffect(() => {
+    if (config.wallet === 'sui' && currentAccount) {
+      initializeSuiWallet({
+        account: currentAccount,
+        connect: async () => {},
+        disconnect: async () => {},
+        signAndExecute: async (tx) => {
+          return new Promise((resolve, reject) => {
+            signAndExecuteTransaction(
+              { transaction: tx },
+              {
+                onSuccess: (result) => resolve({ digest: result.digest }),
+                onError: (error) => reject(error),
+              }
+            );
+          });
+        },
+      });
+
+      // Fetch user capabilities
+      const fetchCapabilities = async () => {
+        try {
+          const wallet = getWalletClient();
+          const caps = await wallet.getUserCapabilities(currentAccount.address);
+          
+          if (caps.authorCapId) {
+            setAuthorCapId(caps.authorCapId);
+          } else if (caps.adminCapId) {
+            // Admin can also act as author, use admin cap
+            setAuthorCapId(caps.adminCapId);
+          }
+
+          // Get registry ID from env
+          const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+          if (envRegistryId) {
+            setRegistryId(envRegistryId);
+          }
+        } catch (error) {
+          console.error('Error fetching capabilities:', error);
+        }
+      };
+
+      fetchCapabilities();
+    }
+  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
+
   const editorOptions = useMemo(() => {
     return {
       spellChecker: false,
       placeholder: 'Write your content in Markdown...',
-      status: ['lines', 'words', 'cursor'],
+      status: ['lines', 'words', 'cursor'] as any,
       autofocus: false,
       toolbar: [
         'bold',
@@ -47,7 +102,7 @@ export default function AuthorPage() {
         'fullscreen',
         '|',
         'guide',
-      ],
+      ] as any,
     };
   }, []);
 
@@ -74,6 +129,22 @@ export default function AuthorPage() {
       return;
     }
 
+    // Check for Sui mode requirements
+    if (config.blockchain === 'sui') {
+      if (!currentAccount) {
+        alert('Please connect your Sui wallet first');
+        return;
+      }
+      if (!authorCapId) {
+        alert('You need Author or Admin capability to publish. Check the Admin panel to grant capabilities.');
+        return;
+      }
+      if (!registryId) {
+        alert('Registry ID not configured. Please set NEXT_PUBLIC_REGISTRY_ID in .env.local');
+        return;
+      }
+    }
+
     setIsSaving(true);
     setSaveSuccess(false);
     setTxInfo(null);
@@ -84,18 +155,35 @@ export default function AuthorPage() {
       console.log('✅ Content uploaded:', newWalrusBlobId);
       
       const blockchainClient = getBlockchainClient();
-      const txResult = await blockchainClient.updatePageContent(
-        'mock_author_cap_id',
-        'mock_page_id',
+      
+      // Use real IDs for Sui, mock IDs for mock mode
+      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
+      const registry = config.blockchain === 'sui' ? registryId! : 'mock_registry_id';
+      
+      // Create new page instead of updating
+      const txResult = await blockchainClient.createPage(
+        capabilityId,
+        registry,
         newWalrusBlobId
       );
+      
       console.log('✅ Page published:', txResult.txHash);
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Transaction failed');
+      }
       
       setTxInfo({
         walrusBlobId: newWalrusBlobId,
         txHash: txResult.txHash,
       });
       setSaveSuccess(true);
+      
+      // Clear form
+      setTitle('');
+      setSlug('');
+      setExcerpt('');
+      setContent('');
       
       setTimeout(() => {
         setSaveSuccess(false);
@@ -150,12 +238,15 @@ export default function AuthorPage() {
                       Connected Address
                     </div>
                     <div className="font-mono text-sm font-semibold text-navy-700 dark:text-navy-300">
-                      {MOCK_ADDRESSES.author1.substring(0, 10)}...{MOCK_ADDRESSES.author1.substring(MOCK_ADDRESSES.author1.length - 8)}
+                      {config.wallet === 'sui' && currentAccount
+                        ? `${currentAccount.address.substring(0, 10)}...${currentAccount.address.substring(currentAccount.address.length - 8)}`
+                        : `${MOCK_ADDRESSES.author1.substring(0, 10)}...${MOCK_ADDRESSES.author1.substring(MOCK_ADDRESSES.author1.length - 8)}`
+                      }
                     </div>
                   </div>
                 </div>
                 <div className="neon-badge">
-                  ✓ Authorized
+                  {authorCapId ? '✓ Authorized' : '⚠️ No Capability'}
                 </div>
               </div>
             </div>

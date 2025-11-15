@@ -5,7 +5,6 @@
 
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
-import { bcs } from '@mysten/sui/bcs';
 import {
   IBlockchainClient,
   TransactionResult,
@@ -65,7 +64,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         arguments: [
           tx.object(authorCapId),
           tx.object(registryId),
-          tx.pure(bcs.string().serialize(walrusBlobId).toBytes()),
+          tx.pure.string(walrusBlobId),
         ],
       });
 
@@ -109,7 +108,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         arguments: [
           tx.object(authorCapId),
           tx.object(pageId),
-          tx.pure(bcs.string().serialize(newWalrusBlobId).toBytes()),
+          tx.pure.string(newWalrusBlobId),
         ],
       });
 
@@ -151,7 +150,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         target: `${this.packageId}::contract::grant_author_capability`,
         arguments: [
           tx.object(adminCapId),
-          tx.pure(bcs.address().serialize(recipientAddress).toBytes()),
+          tx.pure.address(recipientAddress),
         ],
       });
 
