@@ -17,7 +17,6 @@ export default function PostPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch page data by slug
     const pageData = getPageBySlug(slug);
     
     if (!pageData) {
@@ -34,22 +33,20 @@ export default function PostPage() {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('tr-TR', {
+    return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-off-white dark:bg-navy-950">
         <Navbar />
-        <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Yükleniyor...</p>
+        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
+          <div className="inline-block w-16 h-16 border-4 border-navy-600 border-t-neon-green rounded-full animate-spin"></div>
+          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 font-medium">Loading article...</p>
         </div>
       </div>
     );
@@ -57,21 +54,22 @@ export default function PostPage() {
 
   if (!page) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-off-white dark:bg-navy-950">
         <Navbar />
-        <div className="max-w-5xl mx-auto px-4 py-16 text-center">
-          <div className="text-6xl mb-4">😕</div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            Yazı Bulunamadı
+        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
+          <div className="text-8xl mb-8 opacity-50">😕</div>
+          <h1 className="text-4xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+            Article Not Found
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Aradığınız yazı mevcut değil veya kaldırılmış olabilir.
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-10 max-w-md mx-auto">
+            The article you're looking for doesn't exist or has been removed.
           </p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-lg transition-colors"
+            className="modern-button inline-flex items-center gap-2"
           >
-            ← Dashboard'a Dön
+            <span>←</span>
+            <span>Back to Dashboard</span>
           </button>
         </div>
       </div>
@@ -79,44 +77,44 @@ export default function PostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-off-white dark:bg-navy-950">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Back Button */}
         <button
           onClick={() => router.push('/')}
-          className="mb-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+          className="mb-8 inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm bg-navy-100 dark:bg-navy-800 text-navy-700 dark:text-navy-300 hover:bg-navy-200 dark:hover:bg-navy-700 transition-all hover:gap-3"
         >
           <span>←</span>
-          <span>Tüm Yazılar</span>
+          <span>All Articles</span>
         </button>
 
         {/* Article Header */}
-        <header className="mb-8">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
+        <header className="mb-12">
+          <h1 className="text-6xl font-bold mb-6 leading-tight bg-gradient-to-r from-navy-800 to-navy-600 dark:from-navy-100 dark:to-navy-300 bg-clip-text text-transparent">
             {page.title}
           </h1>
           
-          <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <span>👤</span>
-              <span className="font-mono">{formatAddress(page.author)}</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="provenance-chip">
+              <span className="text-navy-700 dark:text-navy-300">👤</span>
+              <span>{formatAddress(page.author)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span>📅</span>
+            <div className="provenance-chip">
+              <span className="text-navy-700 dark:text-navy-300">📅</span>
               <span>{formatDate(page.updated_at)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span>🔢</span>
-              <span>Versiyon {page.version}</span>
+            <div className="provenance-chip">
+              <span className="text-navy-700 dark:text-navy-300">🔢</span>
+              <span>Version {page.version}</span>
             </div>
           </div>
         </header>
 
         {/* Article Content */}
-        <article className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-8">
-          <div className="p-8 md:p-12">
+        <article className="glass-card mb-12 overflow-hidden">
+          <div className="p-12 lg:p-16">
             <div className="markdown-content">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {page.markdown_content || ''}
@@ -125,62 +123,67 @@ export default function PostPage() {
           </div>
         </article>
 
-        {/* Blockchain Info */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-            <span>🔗</span>
-            <span>Blockchain Bilgileri</span>
-          </h2>
+        {/* Provenance Footer - Blockchain Info */}
+        <div className="glass-card p-8 mb-12">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-green/20 to-neon-cyan/20 flex items-center justify-center border border-neon-green/30">
+              <span className="text-2xl">🔗</span>
+            </div>
+            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200">
+              Blockchain Provenance
+            </h2>
+          </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Sayfa ID
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                Page ID
               </div>
-              <div className="font-mono text-sm text-gray-900 dark:text-white">
+              <div className="font-mono text-lg font-bold text-navy-700 dark:text-navy-300">
                 #{page.page_id}
               </div>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
                 Walrus BLOB ID
               </div>
-              <div className="font-mono text-xs text-gray-900 dark:text-white truncate">
+              <div className="font-mono text-sm text-navy-700 dark:text-navy-300 truncate">
                 {page.walrus_blob_id}
               </div>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Oluşturulma Tarihi
+            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                Created On
               </div>
-              <div className="text-sm text-gray-900 dark:text-white">
+              <div className="text-sm font-medium text-navy-700 dark:text-navy-300">
                 {formatDate(page.created_at)}
               </div>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Yazar Adresi
+            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                Author Address
               </div>
-              <div className="font-mono text-xs text-gray-900 dark:text-white truncate">
+              <div className="font-mono text-sm text-navy-700 dark:text-navy-300 truncate">
                 {page.author}
               </div>
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">ℹ️</span>
+          <div className="p-5 rounded-xl bg-gradient-to-r from-neon-green/10 to-neon-cyan/10 border border-neon-green/20">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-neon-green/20 flex items-center justify-center">
+                <span className="text-xl">✓</span>
+              </div>
               <div>
-                <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-1">
-                  Otantiklik Doğrulaması
+                <h3 className="font-bold text-navy-800 dark:text-navy-200 mb-2">
+                  Authenticity Verified
                 </h3>
-                <p className="text-sm text-blue-700 dark:text-blue-400">
-                  Bu sayfa Sui blockchain üzerinde saklanmaktadır. Versiyon numarası ve yazar
-                  adresi, içeriğin özgünlüğünü ve değişmezliğini garanti eder. İçerik Walrus
-                  dağıtık depolama sisteminde kalıcı olarak saklanır.
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                  This article is stored on the Sui blockchain. The version number and author address guarantee 
+                  content authenticity and immutability. Content is permanently stored on Walrus distributed storage.
                 </p>
               </div>
             </div>
@@ -191,13 +194,13 @@ export default function PostPage() {
         <div className="text-center">
           <button
             onClick={() => router.push('/')}
-            className="px-8 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg transition-colors border border-gray-300 dark:border-gray-600"
+            className="modern-button inline-flex items-center gap-2"
           >
-            ← Tüm Yazılara Dön
+            <span>←</span>
+            <span>Back to All Articles</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
-

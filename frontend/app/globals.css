@@ -2,110 +2,301 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --navy-primary: #0052cc;
+  --navy-dark: #003d99;
+  --neon-accent: #00ff88;
+  --neon-secondary: #ffcc00;
+  --bg-light: #fafbfc;
+  --text-primary: #001433;
+  --text-secondary: #5a6c7d;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --navy-primary: #3385ff;
+    --navy-dark: #0066ff;
+    --bg-light: #0a1628;
+    --text-primary: #e6f0ff;
+    --text-secondary: #99c2ff;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+* {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Markdown content styles */
+body {
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Professional Markdown Typography */
 .markdown-content {
-  @apply prose prose-lg prose-slate max-w-none dark:prose-invert;
+  @apply prose prose-lg max-w-none dark:prose-invert;
+  font-size: 1.125rem;
+  line-height: 1.8;
+  letter-spacing: -0.011em;
 }
 
 .markdown-content h1 {
-  @apply text-4xl font-bold mb-4 mt-8 text-gray-900 dark:text-gray-100;
+  @apply text-5xl font-bold mb-6 mt-12 tracking-tight;
+  color: var(--text-primary);
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .markdown-content h2 {
-  @apply text-3xl font-semibold mb-3 mt-6 text-gray-800 dark:text-gray-200;
+  @apply text-4xl font-bold mb-5 mt-10 tracking-tight;
+  color: var(--text-primary);
+  font-weight: 700;
+  border-bottom: 2px solid var(--neon-accent);
+  padding-bottom: 0.5rem;
 }
 
 .markdown-content h3 {
-  @apply text-2xl font-semibold mb-2 mt-4 text-gray-800 dark:text-gray-200;
+  @apply text-3xl font-semibold mb-4 mt-8 tracking-tight;
+  color: var(--navy-primary);
+  font-weight: 600;
 }
 
 .markdown-content p {
-  @apply mb-4 leading-relaxed text-gray-700 dark:text-gray-300;
+  @apply mb-6 leading-relaxed;
+  color: var(--text-secondary);
+  font-size: 1.125rem;
 }
 
-.markdown-content ul {
-  @apply list-disc list-inside mb-4 space-y-2;
-}
-
+.markdown-content ul,
 .markdown-content ol {
-  @apply list-decimal list-inside mb-4 space-y-2;
+  @apply mb-6 space-y-3 pl-6;
+}
+
+.markdown-content li {
+  @apply leading-relaxed;
+  color: var(--text-secondary);
 }
 
 .markdown-content code {
-  @apply bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono;
+  @apply px-2 py-1 rounded-md text-sm;
+  background: rgba(0, 102, 255, 0.1);
+  color: var(--navy-dark);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
 }
 
 .markdown-content pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto mb-4;
+  @apply p-6 rounded-xl mb-6 overflow-x-auto;
+  background: linear-gradient(135deg, #001433 0%, #002966 100%);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 102, 255, 0.15);
 }
 
 .markdown-content pre code {
-  @apply bg-transparent p-0;
+  @apply bg-transparent p-0 text-sm;
+  color: #e6f0ff;
 }
 
 .markdown-content blockquote {
-  @apply border-l-4 border-primary-500 pl-4 italic my-4 text-gray-600 dark:text-gray-400;
+  @apply pl-6 my-6 italic border-l-4 rounded-r-lg py-4 pr-4;
+  border-color: var(--neon-accent);
+  background: rgba(0, 255, 136, 0.05);
+  color: var(--text-secondary);
+  font-size: 1.125rem;
 }
 
 .markdown-content a {
-  @apply text-primary-600 hover:text-primary-700 underline;
+  @apply font-medium no-underline relative;
+  color: var(--navy-primary);
+  transition: all 0.2s ease;
+}
+
+.markdown-content a:hover {
+  color: var(--neon-accent);
+}
+
+.markdown-content a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--neon-accent);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.markdown-content a:hover::after {
+  transform: scaleX(1);
 }
 
 .markdown-content strong {
-  @apply font-bold text-gray-900 dark:text-gray-100;
+  @apply font-bold;
+  color: var(--text-primary);
 }
 
 .markdown-content hr {
-  @apply my-8 border-gray-300 dark:border-gray-700;
+  @apply my-12 border-0 h-px;
+  background: linear-gradient(90deg, transparent, var(--navy-primary), transparent);
 }
 
 .markdown-content table {
-  @apply w-full border-collapse mb-4;
-}
-
-.markdown-content th,
-.markdown-content td {
-  @apply border border-gray-300 dark:border-gray-700 px-4 py-2;
+  @apply w-full border-collapse mb-6 rounded-lg overflow-hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .markdown-content th {
-  @apply bg-gray-100 dark:bg-gray-800 font-semibold;
+  @apply px-6 py-4 text-left font-semibold;
+  background: linear-gradient(135deg, var(--navy-dark), var(--navy-primary));
+  color: white;
 }
 
-/* SimpleMDE overrides */
+.markdown-content td {
+  @apply px-6 py-4 border-b border-gray-200 dark:border-gray-800;
+}
+
+.markdown-content tr:hover td {
+  background: rgba(0, 102, 255, 0.05);
+}
+
+/* Modern Form Styles */
+.modern-input {
+  @apply w-full px-5 py-3.5 rounded-xl border-2 transition-all duration-300;
+  border-color: rgba(0, 82, 204, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.modern-input:focus {
+  @apply outline-none;
+  border-color: var(--neon-accent);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.1);
+}
+
+.modern-button {
+  @apply px-8 py-4 rounded-xl font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, var(--navy-primary), var(--navy-dark));
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 82, 204, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 82, 204, 0.4);
+}
+
+.modern-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.modern-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modern-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.modern-button:hover::before {
+  left: 100%;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  @apply rounded-2xl border backdrop-blur-lg;
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 82, 204, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-card {
+    background: rgba(10, 22, 40, 0.8);
+    border-color: rgba(51, 133, 255, 0.2);
+  }
+}
+
+/* Frosted Glass Navigation */
+.frosted-nav {
+  @apply backdrop-blur-lg border-b;
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 82, 204, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .frosted-nav {
+    background: rgba(10, 22, 40, 0.7);
+    border-color: rgba(51, 133, 255, 0.2);
+  }
+}
+
+/* Neon Accent Badge */
+.neon-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 217, 255, 0.2));
+  color: var(--neon-accent);
+  border: 1px solid var(--neon-accent);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* SimpleMDE Modern Override */
 .EasyMDEContainer {
-  @apply border border-gray-300 rounded-lg;
+  @apply border-0 rounded-2xl overflow-hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .EasyMDEContainer .CodeMirror {
-  @apply min-h-[400px] text-base;
+  @apply min-h-[500px] text-base;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.8;
+  padding: 1.5rem;
 }
 
 .EasyMDEContainer .editor-toolbar {
-  @apply border-b border-gray-300 bg-gray-50;
+  @apply border-b-2;
+  background: linear-gradient(135deg, rgba(0, 82, 204, 0.05), rgba(0, 102, 255, 0.05));
+  border-color: rgba(0, 82, 204, 0.1);
+}
+
+.EasyMDEContainer .editor-toolbar button {
+  @apply transition-all duration-200;
+}
+
+.EasyMDEContainer .editor-toolbar button:hover {
+  background: rgba(0, 255, 136, 0.1);
+  color: var(--neon-accent);
+}
+
+/* Professional Footer Chip */
+.provenance-chip {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-mono cursor-pointer transition-all duration-300;
+  background: linear-gradient(135deg, rgba(0, 82, 204, 0.1), rgba(0, 102, 255, 0.05));
+  border: 1px solid rgba(0, 82, 204, 0.2);
+}
+
+.provenance-chip:hover {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 217, 255, 0.05));
+  border-color: var(--neon-accent);
+  box-shadow: 0 4px 16px rgba(0, 255, 136, 0.2);
+  transform: translateY(-2px);
 }
 

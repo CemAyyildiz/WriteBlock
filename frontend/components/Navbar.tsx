@@ -14,51 +14,85 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">W</span>
-              </div>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+    <nav className="frosted-nav sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="flex justify-between h-20">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-3 group transition-all duration-300">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-navy-600 to-navy-800 shadow-lg">
+              <span className="text-white font-bold text-2xl relative z-10">W</span>
+              <div className="absolute inset-0 bg-gradient-to-br from-neon-green to-neon-cyan opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            </div>
+            <div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-navy-700 to-navy-900 dark:from-navy-300 dark:to-navy-100 bg-clip-text text-transparent">
                 WriteBlock
               </span>
-            </Link>
-          </div>
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Decentralized CMS
+              </div>
+            </div>
+          </Link>
 
-          <div className="flex items-center space-x-1">
+          {/* Navigation */}
+          <div className="flex items-center space-x-2">
             <Link
               href="/"
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`group relative px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 ${
                 isActive('/')
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                  ? 'text-navy-700 dark:text-navy-300'
+                  : 'text-gray-600 hover:text-navy-600 dark:text-gray-400 dark:hover:text-navy-400'
               }`}
             >
-              📚 Yazılar
+              {isActive('/') && (
+                <div className="absolute inset-0 bg-gradient-to-r from-navy-100 to-navy-50 dark:from-navy-900 dark:to-navy-800 rounded-xl"></div>
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <span className="text-base">📚</span>
+                <span>Yazılar</span>
+              </span>
             </Link>
+
             <Link
               href="/author"
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`group relative px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 ${
                 isActive('/author')
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                  ? 'text-navy-700 dark:text-navy-300'
+                  : 'text-gray-600 hover:text-navy-600 dark:text-gray-400 dark:hover:text-navy-400'
               }`}
             >
-              ✍️ Yaz
+              {isActive('/author') && (
+                <div className="absolute inset-0 bg-gradient-to-r from-navy-100 to-navy-50 dark:from-navy-900 dark:to-navy-800 rounded-xl"></div>
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <span className="text-base">✍️</span>
+                <span>Yaz</span>
+              </span>
             </Link>
+
             <Link
               href="/admin"
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`group relative px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 ${
                 isActive('/admin')
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-                  : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                  ? 'text-navy-700 dark:text-navy-300'
+                  : 'text-gray-600 hover:text-navy-600 dark:text-gray-400 dark:hover:text-navy-400'
               }`}
             >
-              👑 Admin
+              {isActive('/admin') && (
+                <div className="absolute inset-0 bg-gradient-to-r from-navy-100 to-navy-50 dark:from-navy-900 dark:to-navy-800 rounded-xl"></div>
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <span className="text-base">👑</span>
+                <span>Admin</span>
+              </span>
             </Link>
+
+            {/* Role Badge */}
+            <div className="ml-4 neon-badge">
+              <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+              <span className="font-mono text-xs">Author</span>
+            </div>
           </div>
         </div>
       </div>

@@ -8,18 +8,37 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+        // Deep Navy primary palette
+        navy: {
+          50: '#e6f0ff',
+          100: '#cce0ff',
+          200: '#99c2ff',
+          300: '#66a3ff',
+          400: '#3385ff',
+          500: '#0066ff',
+          600: '#0052cc',
+          700: '#003d99',
+          800: '#002966',
+          900: '#001433',
+          950: '#000a1a',
         },
+        // Neon accent palette
+        neon: {
+          green: '#00ff88',
+          yellow: '#ffcc00',
+          orange: '#ff6b35',
+          cyan: '#00d9ff',
+        },
+        // Professional neutrals
+        'off-white': '#fafbfc',
+        'soft-gray': '#f4f6f8',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      backdropBlur: {
+        xs: '2px',
       },
     },
   },

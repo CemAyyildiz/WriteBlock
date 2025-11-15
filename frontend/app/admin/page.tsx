@@ -20,18 +20,17 @@ export default function AdminPage() {
 
   const handleGrantCapability = async () => {
     if (!newAuthorAddress || !newAuthorName) {
-      alert('Lütfen tüm alanları doldurun');
+      alert('Please fill all fields');
       return;
     }
 
     if (!validateAddress(newAuthorAddress)) {
-      alert('Geçersiz Sui adresi formatı. Adres 0x ile başlamalı ve 66 karakter uzunluğunda olmalıdır.');
+      alert('Invalid Sui address format. Address must start with 0x and be 66 characters long.');
       return;
     }
 
-    // Check if already exists
     if (authors.some(a => a.address.toLowerCase() === newAuthorAddress.toLowerCase())) {
-      alert('Bu adres zaten yazar yetkisine sahip');
+      alert('This address already has author capability');
       return;
     }
 
@@ -39,15 +38,13 @@ export default function AdminPage() {
     setGrantSuccess(false);
 
     try {
-      // Grant author capability via blockchain (Sui or Mock)
       const blockchainClient = getBlockchainClient();
       const txResult = await blockchainClient.grantAuthorCapability(
-        'mock_admin_cap_id', // In real app, get from wallet
+        'mock_admin_cap_id',
         newAuthorAddress
       );
       console.log('✅ Author capability granted:', txResult.txHash);
       
-      // Add new author to list
       const newAuthor: Author = {
         address: newAuthorAddress,
         name: newAuthorName,
@@ -58,15 +55,13 @@ export default function AdminPage() {
       setTxHash(txResult.txHash);
       setGrantSuccess(true);
       
-      // Clear form
       setNewAuthorAddress('');
       setNewAuthorName('');
       
-      // Auto-hide success message
       setTimeout(() => setGrantSuccess(false), 5000);
     } catch (error) {
       console.error('Grant error:', error);
-      alert('Yetkilendirme başarısız: ' + (error as Error).message);
+      alert('Authorization failed: ' + (error as Error).message);
     } finally {
       setIsGranting(false);
     }
@@ -77,126 +72,115 @@ export default function AdminPage() {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('tr-TR', {
+    return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-off-white dark:bg-navy-950">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-            <span>👑</span>
-            <span>Yönetici Görünümü</span>
-            <span className="mx-2">•</span>
-            <span>Admin Capability Gerekli</span>
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 border border-purple-200 dark:border-purple-700">
+            <div className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></div>
+            <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">Admin Access</span>
           </div>
-          <div className="flex items-center justify-between">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-              Yazar Yönetimi
-            </h1>
-            <div className="flex items-center gap-3">
-              <div className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
-                ✓ Admin
-              </div>
-            </div>
-          </div>
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-navy-800 to-purple-600 dark:from-navy-200 dark:to-purple-400 bg-clip-text text-transparent">
+            Author Management
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">
+            Grant write permissions to trusted addresses
+          </p>
         </div>
 
-        {/* Admin Info */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl shadow-md border border-purple-200 dark:border-purple-800 p-4 mb-6">
+        {/* Admin Info Card */}
+        <div className="glass-card p-6 mb-8 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                <span className="text-2xl">👑</span>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                <span className="text-3xl">👑</span>
               </div>
               <div>
-                <div className="text-sm text-purple-600 dark:text-purple-400">
-                  Admin Adresi
+                <div className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
+                  Admin Address
                 </div>
-                <div className="font-mono text-sm text-gray-900 dark:text-white font-medium">
+                <div className="font-mono text-lg font-bold text-navy-700 dark:text-navy-300">
                   {formatAddress(MOCK_ADDRESSES.admin)}
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm text-purple-600 dark:text-purple-400">
-                Yetki Durumu
+              <div className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
+                Authority Status
               </div>
-              <div className="font-semibold text-purple-700 dark:text-purple-300">
+              <div className="font-bold text-lg text-purple-700 dark:text-purple-300">
                 Admin_Capability ✓
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          {/* Grant Author Capability Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="border-b border-gray-200 dark:border-gray-700 p-5 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Yeni Yazar Ekle
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Grant Form */}
+          <div className="glass-card overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
+              <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200">
+                Add New Author
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Author_Capability yetkisi ver
+                Grant Author_Capability permission
               </p>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-8 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Yazar İsmi
+                <label className="block text-sm font-semibold text-navy-700 dark:text-navy-300 mb-2">
+                  Author Name
                 </label>
                 <input
                   type="text"
                   value={newAuthorName}
                   onChange={(e) => setNewAuthorName(e.target.value)}
-                  placeholder="Örn: Alice Writer"
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-900 dark:text-white"
+                  placeholder="e.g., Alice Writer"
+                  className="modern-input"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Sui Wallet Adresi
+                <label className="block text-sm font-semibold text-navy-700 dark:text-navy-300 mb-2">
+                  Sui Wallet Address
                 </label>
                 <input
                   type="text"
                   value={newAuthorAddress}
                   onChange={(e) => setNewAuthorAddress(e.target.value)}
                   placeholder="0x..."
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm dark:bg-gray-900 dark:text-white"
+                  className="modern-input font-mono"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  66 karakter uzunluğunda, 0x ile başlayan geçerli bir Sui adresi
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  66 characters long, starting with 0x
                 </p>
               </div>
 
               <button
                 onClick={handleGrantCapability}
                 disabled={isGranting || !newAuthorAddress || !newAuthorName}
-                className="w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
+                className="modern-button w-full"
               >
                 {isGranting ? (
                   <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span>Yetkilendiriliyor...</span>
+                    <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Authorizing...</span>
                   </>
                 ) : (
                   <>
                     <span>✨</span>
-                    <span>Yazar Yetkisi Ver</span>
+                    <span>Grant Author Permission</span>
                   </>
                 )}
               </button>
@@ -204,59 +188,59 @@ export default function AdminPage() {
           </div>
 
           {/* How It Works */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="border-b border-gray-200 dark:border-gray-700 p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-900 dark:to-gray-800">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Nasıl Çalışır?
+          <div className="glass-card overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-neon-green/10 to-neon-cyan/10 dark:from-neon-green/5 dark:to-neon-cyan/5">
+              <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200">
+                How It Works
               </h2>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span>1</span>
+            <div className="p-8 space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center flex-shrink-0 text-white font-bold shadow-lg">
+                  1
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Admin Capability Kontrolü
+                  <h3 className="font-bold text-navy-700 dark:text-navy-300 mb-2">
+                    Admin Capability Check
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Sadece Admin_Capability sahibi bu işlemi yapabilir
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Only Admin_Capability holders can perform this operation
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span>2</span>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-500 to-navy-700 flex items-center justify-center flex-shrink-0 text-white font-bold shadow-lg">
+                  2
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Author_Capability Mint
+                  <h3 className="font-bold text-navy-700 dark:text-navy-300 mb-2">
+                    Mint Author_Capability
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Yeni bir Author_Capability nesnesi oluşturulur
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    A new Author_Capability object is created on-chain
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span>3</span>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-green to-neon-cyan flex items-center justify-center flex-shrink-0 text-white font-bold shadow-lg">
+                  3
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                    Transfer İşlemi
+                  <h3 className="font-bold text-navy-700 dark:text-navy-300 mb-2">
+                    Transfer to Author
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Capability, belirtilen adrese transfer edilir
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Capability is transferred to the specified address
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-sm text-blue-700 dark:text-blue-400">
-                  <strong>Önemli:</strong> Author_Capability kopyalanamaz ve yok edilemez (non-copyable, non-droppable). Bu, yetki sisteminin güvenliğini sağlar.
+              <div className="p-4 rounded-xl bg-gradient-to-r from-neon-green/10 to-neon-cyan/10 border border-neon-green/20">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong className="text-navy-700 dark:text-navy-300">Important:</strong> Author_Capability is non-copyable and non-droppable, ensuring secure permission management.
                 </p>
               </div>
             </div>
@@ -265,24 +249,24 @@ export default function AdminPage() {
 
         {/* Success Message */}
         {grantSuccess && txHash && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6 animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl">✅</span>
+          <div className="glass-card p-8 mb-8 border-2 border-neon-green/30 bg-gradient-to-r from-neon-green/5 to-neon-cyan/5">
+            <div className="flex items-start gap-6">
+              <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-green to-neon-cyan flex items-center justify-center shadow-lg">
+                <span className="text-3xl">✅</span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-900 dark:text-green-300 mb-2">
-                  Yazar Yetkisi Başarıyla Verildi!
+                <h3 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-3">
+                  Author Permission Granted!
                 </h3>
-                <p className="text-sm text-green-700 dark:text-green-400 mb-3">
-                  Author_Capability oluşturuldu ve belirlenen adrese transfer edildi.
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Author_Capability has been created and transferred to the specified address.
                 </p>
                 
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <div className="p-4 rounded-xl bg-white dark:bg-navy-900">
+                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
                     Sui Transaction Hash
                   </div>
-                  <div className="font-mono text-sm text-gray-900 dark:text-white break-all">
+                  <div className="font-mono text-sm text-navy-700 dark:text-navy-300 break-all">
                     {txHash}
                   </div>
                 </div>
@@ -292,33 +276,33 @@ export default function AdminPage() {
         )}
 
         {/* Authors List */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="border-b border-gray-200 dark:border-gray-700 p-5 bg-gray-50 dark:bg-gray-900">
+        <div className="glass-card overflow-hidden">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Yetkili Yazarlar
+                <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200">
+                  Authorized Authors
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Author_Capability sahibi kullanıcılar
+                  Users with Author_Capability
                 </p>
               </div>
-              <div className="px-3 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
-                {authors.length} Yazar
+              <div className="neon-badge text-lg">
+                {authors.length} {authors.length === 1 ? 'Author' : 'Authors'}
               </div>
             </div>
           </div>
 
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {authors.map((author, index) => (
-              <div key={author.address} className="p-5 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+            {authors.map((author) => (
+              <div key={author.address} className="p-6 hover:bg-navy-50 dark:hover:bg-navy-900 transition-colors group">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-blue-100 dark:from-primary-900 dark:to-blue-900 rounded-full flex items-center justify-center">
-                      <span className="text-xl">✍️</span>
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-navy-100 to-navy-200 dark:from-navy-800 dark:to-navy-700 flex items-center justify-center group-hover:shadow-lg transition-shadow">
+                      <span className="text-2xl">✍️</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                      <h3 className="font-bold text-lg text-navy-800 dark:text-navy-200 mb-1">
                         {author.name}
                       </h3>
                       <div className="font-mono text-sm text-gray-600 dark:text-gray-400">
@@ -327,10 +311,10 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      Yetki Verilme Tarihi
+                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                      Permission Granted
                     </div>
-                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="text-sm font-medium text-navy-700 dark:text-navy-300">
                       {formatDate(author.granted_at)}
                     </div>
                   </div>
@@ -343,4 +327,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
