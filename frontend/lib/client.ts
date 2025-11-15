@@ -106,3 +106,33 @@ export function getProviderConfig() {
   };
 }
 
+/**
+ * Initialize Sui wallet connection
+ * This should be called from a React component with dApp Kit hooks
+ */
+export function initializeSuiWallet(handlers: {
+  account: { address: string } | null;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  signAndExecute: (tx: any) => Promise<{ digest: string }>;
+}) {
+  const wallet = getWalletClient();
+  if (wallet instanceof SuiWalletClient) {
+    wallet.setWalletHandlers(handlers);
+  }
+
+  const blockchain = getBlockchainClient();
+  if (blockchain instanceof SuiBlockchainClient) {
+    blockchain.setWallet(handlers.signAndExecute);
+  }
+}
+
+/**
+ * Reset all client instances (useful for testing or reconnection)
+ */
+export function resetClients() {
+  storageClient = null;
+  blockchainClient = null;
+  walletClient = null;
+}
+

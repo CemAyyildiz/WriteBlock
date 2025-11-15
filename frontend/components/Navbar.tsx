@@ -2,9 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
+import { useEffect, useState } from 'react';
+import { getWalletClient, getProviderConfig } from '@/lib/client';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const currentAccount = useCurrentAccount();
+  const [userRole, setUserRole] = useState<string>('viewer');
+  const config = getProviderConfig();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -12,6 +18,34 @@ export default function Navbar() {
     }
     return pathname.startsWith(path);
   };
+
+  // Fetch user capabilities when wallet is connected
+  useEffect(() => {
+    async function fetchCapabilities() {
+      if (!currentAccount?.address) {
+        setUserRole('viewer');
+        return;
+      }
+
+      try {
+        const wallet = getWalletClient();
+        const caps = await wallet.getUserCapabilities(currentAccount.address);
+        
+        if (caps.hasAdminCap) {
+          setUserRole('admin');
+        } else if (caps.hasAuthorCap) {
+          setUserRole('author');
+        } else {
+          setUserRole('viewer');
+        }
+      } catch (error) {
+        console.error('Error fetching capabilities:', error);
+        setUserRole('viewer');
+      }
+    }
+
+    fetchCapabilities();
+  }, [currentAccount?.address]);
 
   return (
     <nav className="frosted-nav sticky top-0 z-50">
@@ -86,12 +120,33 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Role Badge */}
-            <div className="ml-4 neon-badge">
-              <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-              </svg>
-              <span className="font-mono text-xs">Author</span>
+            {/* Wallet Connect Button & Role Badge */}
+            <div className="ml-4 flex items-center gap-3">
+              {/* Provider Status Badge */}
+              {config.isMock && (
+                <div className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                  🎭 Mock Mode
+                </div>
+              )}
+              
+              {/* Role Badge */}
+              {currentAccount && (
+                <div className="neon-badge">
+                  <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-mono text-xs capitalize">{userRole}</span>
+                </div>
+              )}
+              
+              {/* Wallet Connect Button */}
+              {config.wallet === 'sui' ? (
+                <ConnectButton />
+              ) : (
+                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-navy-600 to-navy-700 text-white font-semibold text-sm hover:shadow-lg hover:shadow-navy-500/50 transition-all duration-300">
+                  Mock Wallet
+                </button>
+              )}
             </div>
           </div>
         </div>
