@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
-import { MOCK_AUTHORS, MOCK_ADDRESSES, simulateSuiTransaction } from '@/lib/mockData';
+import { MOCK_AUTHORS, MOCK_ADDRESSES } from '@/lib/mockData';
 import { Author } from '@/types';
+import { getBlockchainClient } from '@/lib/client';
 
 export default function AdminPage() {
   const [authors, setAuthors] = useState<Author[]>(MOCK_AUTHORS);
@@ -38,8 +39,13 @@ export default function AdminPage() {
     setGrantSuccess(false);
 
     try {
-      // Simulate Sui transaction
-      const txResult = await simulateSuiTransaction('grant_author_capability', 1200);
+      // Grant author capability via blockchain (Sui or Mock)
+      const blockchainClient = getBlockchainClient();
+      const txResult = await blockchainClient.grantAuthorCapability(
+        'mock_admin_cap_id', // In real app, get from wallet
+        newAuthorAddress
+      );
+      console.log('✅ Author capability granted:', txResult.txHash);
       
       // Add new author to list
       const newAuthor: Author = {
@@ -60,6 +66,7 @@ export default function AdminPage() {
       setTimeout(() => setGrantSuccess(false), 5000);
     } catch (error) {
       console.error('Grant error:', error);
+      alert('Yetkilendirme başarısız: ' + (error as Error).message);
     } finally {
       setIsGranting(false);
     }

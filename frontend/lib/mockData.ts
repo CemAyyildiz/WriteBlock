@@ -121,22 +121,6 @@ export const getUserSession = (role: 'admin' | 'author' | 'viewer' = 'viewer'): 
   }
 };
 
-// Generate a mock Walrus blob ID
-export const generateMockWalrusBlobId = (): string => {
-  return `mock_walrus_blob_${Math.random().toString(36).substring(2, 15)}`;
-};
-
-// Simulate a Sui transaction
-export const simulateSuiTransaction = async (
-  action: string,
-  delay: number = 1500
-): Promise<{ success: boolean; txHash: string }> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const txHash = `0x${Math.random().toString(16).substring(2, 66)}`;
-      console.log(`[Mock Transaction] ${action} - TX: ${txHash}`);
-      resolve({ success: true, txHash });
-    }, delay);
-  });
-};
+// Note: Mock transaction functions moved to lib/mock/ implementations
+// Use getStorageClient() and getBlockchainClient() instead
 

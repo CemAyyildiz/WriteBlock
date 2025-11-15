@@ -4,7 +4,8 @@ import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import 'easymde/dist/easymde.min.css';
 import Navbar from '@/components/Navbar';
-import { MOCK_PAGE, MOCK_ADDRESSES, generateMockWalrusBlobId, simulateSuiTransaction } from '@/lib/mockData';
+import { MOCK_PAGE, MOCK_ADDRESSES } from '@/lib/mockData';
+import { getStorageClient, getBlockchainClient } from '@/lib/client';
 
 // Dynamically import SimpleMDE to avoid SSR issues
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
@@ -48,12 +49,19 @@ export default function AuthorPage() {
     setTxInfo(null);
 
     try {
-      // Step 1: Generate mock Walrus BLOB ID
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const newWalrusBlobId = generateMockWalrusBlobId();
+      // Step 1: Upload content to storage (Walrus or Mock)
+      const storageClient = getStorageClient();
+      const newWalrusBlobId = await storageClient.upload(content);
+      console.log('✅ Content uploaded:', newWalrusBlobId);
       
-      // Step 2: Simulate Sui transaction
-      const txResult = await simulateSuiTransaction('update_page_content');
+      // Step 2: Update page metadata on blockchain (Sui or Mock)
+      const blockchainClient = getBlockchainClient();
+      const txResult = await blockchainClient.updatePageContent(
+        'mock_author_cap_id', // In real app, get from wallet
+        'mock_page_id',       // In real app, get from page context
+        newWalrusBlobId
+      );
+      console.log('✅ Blockchain updated:', txResult.txHash);
       
       // Step 3: Show success
       setTxInfo({
@@ -66,6 +74,7 @@ export default function AuthorPage() {
       setTimeout(() => setSaveSuccess(false), 5000);
     } catch (error) {
       console.error('Save error:', error);
+      alert('Kaydetme başarısız: ' + (error as Error).message);
     } finally {
       setIsSaving(false);
     }
