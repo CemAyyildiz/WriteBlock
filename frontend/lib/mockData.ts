@@ -8,15 +8,19 @@ export const MOCK_ADDRESSES = {
   viewer: '0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321',
 };
 
-// Mock page data
-export const MOCK_PAGE: PageMetadata = {
-  page_id: 0,
-  walrus_blob_id: 'mock_walrus_blob_abc123xyz',
-  version: 3,
-  author: MOCK_ADDRESSES.author1,
-  created_at: 1699564800000, // Nov 10, 2024
-  updated_at: 1731110400000, // Nov 9, 2025
-  markdown_content: `# WriteBlock: Decentralized Content Management
+// Mock pages/posts
+export const MOCK_PAGES: PageMetadata[] = [
+  {
+    page_id: 0,
+    walrus_blob_id: 'mock_walrus_blob_abc123xyz',
+    version: 3,
+    author: MOCK_ADDRESSES.author1,
+    created_at: 1699564800000, // Nov 10, 2024
+    updated_at: 1731110400000, // Nov 9, 2025
+    title: 'WriteBlock: Decentralized Content Management',
+    slug: 'writeblock-decentralized-cms',
+    excerpt: 'Welcome to WriteBlock, a revolutionary decentralized CMS built on Sui blockchain with Walrus storage.',
+    markdown_content: `# WriteBlock: Decentralized Content Management
 
 Welcome to **WriteBlock**, a revolutionary decentralized CMS built on Sui blockchain with Walrus storage.
 
@@ -45,39 +49,127 @@ Welcome to **WriteBlock**, a revolutionary decentralized CMS built on Sui blockc
 4. **Metadata** is tracked on Sui blockchain
 5. **Everyone** can view published content
 
-## Technical Architecture
+---
+
+*This page was created using WriteBlock's decentralized CMS.*`,
+  },
+  {
+    page_id: 1,
+    walrus_blob_id: 'mock_walrus_blob_def456uvw',
+    version: 1,
+    author: MOCK_ADDRESSES.author2,
+    created_at: 1720000000000, // Jul 3, 2024
+    updated_at: 1720000000000,
+    title: 'Getting Started with Sui Blockchain',
+    slug: 'getting-started-sui-blockchain',
+    excerpt: 'Learn the basics of Sui blockchain and how to build decentralized applications.',
+    markdown_content: `# Getting Started with Sui Blockchain
+
+Sui is a next-generation smart contract platform with high throughput, low latency, and an asset-oriented programming model powered by Move.
+
+## Why Sui?
+
+- **Fast**: Parallel transaction execution
+- **Secure**: Move programming language
+- **Scalable**: Horizontal scaling
+- **Developer-friendly**: Modern tooling
+
+## Key Concepts
+
+### Objects
+Everything in Sui is an object. Objects can be owned, shared, or immutable.
+
+### Move Language
+Sui uses Move, a safe and expressive language for smart contracts.
+
+### Capabilities
+Sui's capability pattern enables secure and flexible permission systems.
+
+## Getting Started
+
+\`\`\`bash
+# Install Sui CLI
+cargo install --locked --git https://github.com/MystenLabs/sui.git sui
+
+# Create a new project
+sui move new my_project
+\`\`\`
+
+Happy building! 🚀`,
+  },
+  {
+    page_id: 2,
+    walrus_blob_id: 'mock_walrus_blob_ghi789rst',
+    version: 2,
+    author: MOCK_ADDRESSES.author1,
+    created_at: 1725000000000, // Aug 30, 2024
+    updated_at: 1728000000000, // Oct 4, 2024
+    title: 'Understanding Walrus Storage',
+    slug: 'understanding-walrus-storage',
+    excerpt: 'Walrus provides decentralized storage for blobs with high availability and performance.',
+    markdown_content: `# Understanding Walrus Storage
+
+Walrus is a decentralized storage network optimized for large binary objects (BLOBs).
+
+## Features
+
+### 📦 Blob Storage
+- Store any type of content
+- Permanent and immutable
+- Efficient encoding
+
+### 🔗 Integration
+- Native Sui integration
+- Simple APIs
+- Walrus Sites hosting
+
+### 💰 Cost-Effective
+- Pay once, store forever
+- Erasure coding efficiency
+- No recurring fees
+
+## Use Cases
+
+1. **NFT Metadata**: Store images, videos, and metadata
+2. **Decentralized Websites**: Host static sites
+3. **Content Management**: Store blog posts and articles
+4. **Archive Storage**: Long-term data preservation
+
+## Architecture
 
 \`\`\`
 ┌─────────────┐
-│   Viewer    │
-│  (Anyone)   │
+│   Client    │
 └──────┬──────┘
        │
-┌──────▼──────────────────────┐
-│   Sui Smart Contract        │
-│   - Page Metadata           │
-│   - Version: ${3}            │
-│   - Author: 0x...           │
-└──────┬──────────────────────┘
+┌──────▼──────────────┐
+│  Walrus Publishers  │
+│  (Upload endpoint)  │
+└──────┬──────────────┘
        │
-┌──────▼──────────────────────┐
-│   Walrus Storage            │
-│   - Actual Content (BLOB)   │
-│   - Distributed & Permanent │
-└─────────────────────────────┘
+┌──────▼──────────────┐
+│  Storage Nodes      │
+│  (Distributed)      │
+└─────────────────────┘
 \`\`\`
 
-## Why WriteBlock?
+Start using Walrus today! 🐋`,
+  },
+];
 
-- **Censorship Resistant**: No central authority can modify or delete content
-- **Transparent**: All changes are tracked on blockchain
-- **Permanent**: Content stored on Walrus is immutable
-- **Cost Effective**: Pay once, store forever
+// Get single page by slug
+export const getPageBySlug = (slug: string): PageMetadata | undefined => {
+  return MOCK_PAGES.find(page => page.slug === slug);
+};
 
----
+// Get single page by ID
+export const getPageById = (id: number): PageMetadata | undefined => {
+  return MOCK_PAGES.find(page => page.page_id === id);
+};
 
-*This page was created using WriteBlock's decentralized CMS.*
-`,
+// Get all pages (for dashboard)
+export const getAllPages = (): PageMetadata[] => {
+  return MOCK_PAGES.sort((a, b) => b.updated_at - a.updated_at);
 };
 
 // Mock authorized authors list
@@ -103,6 +195,7 @@ export const getUserSession = (role: 'admin' | 'author' | 'viewer' = 'viewer'): 
         role: 'admin',
         hasAdminCap: true,
         hasAuthorCap: true,
+        name: 'Admin User',
       };
     case 'author':
       return {
@@ -110,6 +203,7 @@ export const getUserSession = (role: 'admin' | 'author' | 'viewer' = 'viewer'): 
         role: 'author',
         hasAdminCap: false,
         hasAuthorCap: true,
+        name: 'Alice Writer',
       };
     default:
       return {
@@ -123,4 +217,3 @@ export const getUserSession = (role: 'admin' | 'author' | 'viewer' = 'viewer'): 
 
 // Note: Mock transaction functions moved to lib/mock/ implementations
 // Use getStorageClient() and getBlockchainClient() instead
-

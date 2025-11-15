@@ -6,14 +6,19 @@ import { usePathname } from 'next/navigation';
 export default function Navbar() {
   const pathname = usePathname();
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(path);
+  };
 
   return (
-    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">W</span>
               </div>
@@ -25,14 +30,14 @@ export default function Navbar() {
 
           <div className="flex items-center space-x-1">
             <Link
-              href="/viewer"
+              href="/"
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                isActive('/viewer')
+                isActive('/')
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
                   : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               }`}
             >
-              📖 Okuma
+              📚 Yazılar
             </Link>
             <Link
               href="/author"
@@ -42,7 +47,7 @@ export default function Navbar() {
                   : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               }`}
             >
-              ✍️ Yazma
+              ✍️ Yaz
             </Link>
             <Link
               href="/admin"
@@ -52,7 +57,7 @@ export default function Navbar() {
                   : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               }`}
             >
-              👑 Yönetici
+              👑 Admin
             </Link>
           </div>
         </div>
@@ -60,4 +65,3 @@ export default function Navbar() {
     </nav>
   );
 }
-

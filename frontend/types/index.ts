@@ -7,7 +7,11 @@ export interface PageMetadata {
   author: string;
   created_at: number;
   updated_at: number;
-  markdown_content: string; // In real app, this would be fetched from Walrus
+  // Frontend-specific fields
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  markdown_content?: string; // Cached from Walrus
 }
 
 export interface Author {
@@ -33,5 +37,5 @@ export interface UserSession {
   role: UserRole;
   hasAdminCap?: boolean;
   hasAuthorCap?: boolean;
+  name?: string;
 }
-
