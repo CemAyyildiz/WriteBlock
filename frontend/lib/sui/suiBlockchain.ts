@@ -5,6 +5,7 @@
 
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
+import { bcs } from '@mysten/sui/bcs';
 import {
   IBlockchainClient,
   TransactionResult,
@@ -59,12 +60,15 @@ export class SuiBlockchainClient implements IBlockchainClient {
 
       const tx = new Transaction();
       
+      // Debug log
+      console.log('📝 Creating page with:', { authorCapId, registryId, walrusBlobId });
+      
       tx.moveCall({
         target: `${this.packageId}::contract::create_page`,
         arguments: [
           tx.object(authorCapId),
           tx.object(registryId),
-          tx.pure.string(walrusBlobId),
+          tx.pure(bcs.string().serialize(walrusBlobId).toBytes()), // BCS string serialization with .toBytes()
         ],
       });
 
@@ -81,7 +85,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         txHash: '',
         error: error.message || 'Failed to create page',
       };
-    }
+  }
   }
 
   /**
@@ -108,7 +112,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         arguments: [
           tx.object(authorCapId),
           tx.object(pageId),
-          tx.pure.string(newWalrusBlobId),
+          tx.pure(bcs.string().serialize(newWalrusBlobId).toBytes()), // BCS string serialization
         ],
       });
 
@@ -125,7 +129,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         txHash: '',
         error: error.message || 'Failed to update page',
       };
-    }
+  }
   }
 
   /**
@@ -150,7 +154,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         target: `${this.packageId}::contract::grant_author_capability`,
         arguments: [
           tx.object(adminCapId),
-          tx.pure.address(recipientAddress),
+          tx.pure.address(recipientAddress), // Use tx.pure.address() for Sui addresses
         ],
       });
 
@@ -167,7 +171,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         txHash: '',
         error: error.message || 'Failed to grant author capability',
       };
-    }
+  }
   }
 
   /**
@@ -197,7 +201,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
     } catch (error: any) {
       console.error('Error fetching page metadata:', error);
       throw new Error(`Failed to fetch page metadata: ${error.message}`);
-    }
+  }
   }
 
   /**

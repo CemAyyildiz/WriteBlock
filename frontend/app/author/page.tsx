@@ -61,8 +61,8 @@ export default function AuthorPage() {
           if (caps.authorCapId) {
             setAuthorCapId(caps.authorCapId);
           } else if (caps.adminCapId) {
-            // Admin can also act as author, use admin cap
-            setAuthorCapId(caps.adminCapId);
+            // Admin has Admin capability but needs Author capability to publish
+            alert('⚠️ You have Admin capability but need Author capability to publish articles.\n\nPlease go to Admin Panel and grant yourself Author capability first!');
           }
 
           // Get registry ID from env

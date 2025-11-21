@@ -73,7 +73,7 @@ export class SuiWalletClient implements IWalletClient {
       throw new Error(
         'Wallet handlers not initialized. Call setWalletHandlers first from a React component.'
       );
-    }
+  }
 
     await this.disconnectWallet();
     this.currentAccount = null;
@@ -135,7 +135,7 @@ export class SuiWalletClient implements IWalletClient {
     } catch (error: any) {
       console.error('Error fetching user capabilities:', error);
       throw new Error(`Failed to fetch user capabilities: ${error.message}`);
-    }
+  }
   }
 
   /**
