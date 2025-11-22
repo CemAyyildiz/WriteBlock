@@ -1,6 +1,6 @@
 /**
  * Wallet Interface - Abstraction for wallet connection and account management
- * Implementations: Mock, Sui Wallet Kit
+ * Implementations: Sui Wallet Kit
  */
 
 export interface IWalletClient {
@@ -54,5 +54,5 @@ export interface TransactionResult {
   error?: string;
 }
 
-export type WalletProvider = 'mock' | 'sui';
+export type WalletProvider = 'sui';
 

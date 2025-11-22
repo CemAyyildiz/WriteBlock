@@ -35,7 +35,7 @@ export default function PostPage() {
   
   // Initialize wallet for edit requests
   useEffect(() => {
-    if (config.wallet === 'sui' && currentAccount) {
+    if (currentAccount) {
       initializeSuiWallet({
         account: currentAccount,
         connect: async () => {},
@@ -53,7 +53,7 @@ export default function PostPage() {
         },
       });
     }
-  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
+  }, [currentAccount, signAndExecuteTransaction]);
 
   useEffect(() => {
     const fetchPageContent = async () => {
@@ -210,7 +210,7 @@ export default function PostPage() {
   };
 
   const handleOpenEditRequest = () => {
-    if (!currentAccount && config.wallet === 'sui') {
+    if (!currentAccount) {
       alert('Please connect your wallet first to suggest edits');
       return;
     }
@@ -224,7 +224,7 @@ export default function PostPage() {
       return;
     }
 
-    if (config.wallet === 'sui' && !currentAccount) {
+    if (!currentAccount) {
       alert('Please connect your wallet first');
       return;
     }
@@ -407,10 +407,9 @@ export default function PostPage() {
         {page && (
           (() => {
             // Show button if:
-            // 1. In mock mode (no wallet required)
-            // 2. Wallet connected and user is not the author
+            // Show if wallet connected and user is not the author
             const isAuthor = currentAccount && page.author.toLowerCase() === currentAccount.address.toLowerCase();
-            const shouldShow = config.wallet === 'mock' || (currentAccount && !isAuthor);
+            const shouldShow = currentAccount && !isAuthor;
             
             return shouldShow ? (
               <div className="mb-12 text-center">

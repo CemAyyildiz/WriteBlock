@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
-import { MOCK_AUTHORS, MOCK_ADDRESSES } from '@/lib/mockData';
 import { Author } from '@/types';
 import { getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 
 export default function AdminPage() {
-  const [authors, setAuthors] = useState<Author[]>(MOCK_AUTHORS);
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [newAuthorAddress, setNewAuthorAddress] = useState('');
   const [newAuthorName, setNewAuthorName] = useState('');
   const [isGranting, setIsGranting] = useState(false);
@@ -23,7 +22,7 @@ export default function AdminPage() {
 
   // Initialize Sui wallet connection
   useEffect(() => {
-    if (config.wallet === 'sui' && currentAccount) {
+    if (currentAccount) {
       initializeSuiWallet({
         account: currentAccount,
         connect: async () => {},
@@ -110,8 +109,7 @@ export default function AdminPage() {
     try {
       const blockchainClient = getBlockchainClient();
       
-      // Use real admin cap ID for Sui, mock for mock mode
-      const capabilityId = config.blockchain === 'sui' ? adminCapId! : 'mock_admin_cap_id';
+      const capabilityId = adminCapId!;
       
       const txResult = await blockchainClient.grantAuthorCapability(
         capabilityId,
@@ -188,9 +186,9 @@ export default function AdminPage() {
                   Admin Address
                 </div>
                 <div className="font-mono text-lg font-bold text-navy-700 dark:text-navy-300">
-                  {config.wallet === 'sui' && currentAccount
+                  {currentAccount
                     ? formatAddress(currentAccount.address)
-                    : formatAddress(MOCK_ADDRESSES.admin)
+                    : 'Not connected'
                   }
                 </div>
               </div>

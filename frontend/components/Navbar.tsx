@@ -4,13 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useEffect, useState } from 'react';
-import { getWalletClient, getProviderConfig } from '@/lib/client';
+import { getWalletClient } from '@/lib/client';
 
 export default function Navbar() {
   const pathname = usePathname();
   const currentAccount = useCurrentAccount();
   const [userRole, setUserRole] = useState<string>('viewer');
-  const config = getProviderConfig();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -122,12 +121,6 @@ export default function Navbar() {
 
             {/* Wallet Connect Button & Role Badge */}
             <div className="ml-4 flex items-center gap-3">
-              {/* Provider Status Badge */}
-              {config.isMock && (
-                <div className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
-                  🎭 Mock Mode
-                </div>
-              )}
 
             {/* Role Badge */}
               {currentAccount && (
@@ -140,13 +133,7 @@ export default function Navbar() {
               )}
               
               {/* Wallet Connect Button */}
-              {config.wallet === 'sui' ? (
-                <ConnectButton />
-              ) : (
-                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-navy-600 to-navy-700 text-white font-semibold text-sm hover:shadow-lg hover:shadow-navy-500/50 transition-all duration-300">
-                  Mock Wallet
-                </button>
-              )}
+              <ConnectButton />
             </div>
           </div>
         </div>

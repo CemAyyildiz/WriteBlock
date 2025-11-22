@@ -1,6 +1,6 @@
 /**
  * Blockchain Interface - Abstraction for Sui blockchain interactions
- * Implementations: Mock, Sui
+ * Implementations: Sui
  */
 
 export interface IBlockchainClient {
@@ -149,5 +149,5 @@ export interface RegistryStats {
   createdAt: number;
 }
 
-export type BlockchainProvider = 'mock' | 'sui';
+export type BlockchainProvider = 'sui';
 

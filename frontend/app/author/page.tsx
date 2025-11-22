@@ -656,9 +656,8 @@ export default function AuthorPage() {
       const newWalrusBlobId = await storageClient.upload(JSON.stringify(blobData));
       console.log('✅ Content uploaded with metadata:', newWalrusBlobId);
       
-      // Use real IDs for Sui, mock IDs for mock mode
-      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
-      const registry = config.blockchain === 'sui' ? registryId! : 'mock_registry_id';
+      const capabilityId = authorCapId!;
+      const registry = registryId!;
       
       // Create new page instead of updating
       const txResult = await blockchainClient.createPage(
@@ -813,15 +812,13 @@ export default function AuthorPage() {
       return;
     }
 
-    if (config.blockchain === 'sui') {
-      if (!currentAccount) {
-        alert('Please connect your Sui wallet first');
-        return;
-      }
-      if (!authorCapId) {
-        alert('You need Author capability to update pages.');
-        return;
-      }
+    if (!currentAccount) {
+      alert('Please connect your Sui wallet first');
+      return;
+    }
+    if (!authorCapId) {
+      alert('You need Author capability to update pages.');
+      return;
     }
 
     setIsUpdating(true);
@@ -879,7 +876,7 @@ export default function AuthorPage() {
       console.log('✅ Updated content uploaded:', newWalrusBlobId);
       
       // Update on blockchain
-      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
+      const capabilityId = authorCapId!;
       
       if (!capabilityId) {
         throw new Error('Author capability not found');
@@ -932,7 +929,7 @@ export default function AuthorPage() {
       setEditingPage(null);
       
       // Refresh user's pages
-      if (config.wallet === 'sui' && currentAccount) {
+      if (currentAccount) {
         await fetchUserPages(currentAccount.address);
       }
       
@@ -950,22 +947,20 @@ export default function AuthorPage() {
   const handleDelete = async () => {
     if (!deleteConfirmPage) return;
     
-    if (config.blockchain === 'sui') {
-      if (!currentAccount) {
-        alert('Please connect your Sui wallet first');
-        return;
-      }
-      if (!authorCapId) {
-        alert('You need Author capability to delete pages.');
-        return;
-      }
+    if (!currentAccount) {
+      alert('Please connect your Sui wallet first');
+      return;
+    }
+    if (!authorCapId) {
+      alert('You need Author capability to delete pages.');
+      return;
     }
 
     setIsDeleting(true);
 
     try {
       const blockchainClient = getBlockchainClient();
-      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
+      const capabilityId = authorCapId!;
       
       if (!capabilityId) {
         throw new Error('Author capability not found');
@@ -1007,7 +1002,7 @@ export default function AuthorPage() {
       setDeleteConfirmPage(null);
       
       // Refresh user's pages
-      if (config.wallet === 'sui' && currentAccount) {
+      if (currentAccount) {
         await fetchUserPages(currentAccount.address);
       }
       
@@ -1236,7 +1231,7 @@ export default function AuthorPage() {
                       Connected Address
                     </div>
                     <div className="font-mono text-sm font-semibold text-navy-700 dark:text-navy-300">
-                      {config.wallet === 'sui' && currentAccount
+                      {currentAccount
                         ? `${currentAccount.address.substring(0, 10)}...${currentAccount.address.substring(currentAccount.address.length - 8)}`
                         : 'Not connected'
                       }

@@ -1,6 +1,6 @@
 /**
  * Storage Interface - Abstraction for content storage
- * Implementations: Mock, Walrus
+ * Implementations: Walrus
  */
 
 export interface IStorageClient {
@@ -40,5 +40,5 @@ export interface BlobMetadata {
   contentType?: string;
 }
 
-export type StorageProvider = 'mock' | 'walrus';
+export type StorageProvider = 'walrus';
 
