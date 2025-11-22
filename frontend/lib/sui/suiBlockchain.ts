@@ -515,18 +515,39 @@ export class SuiBlockchainClient implements IBlockchainClient {
 
           if (dynamicField.data?.content && dynamicField.data.content.dataType === 'moveObject') {
             const requestFields = dynamicField.data.content.fields as any;
-            const statusNum = Number(requestFields.status || 0);
+            console.log(`🔍 Edit Request ${i} fields:`, JSON.stringify(requestFields, null, 2));
+            
+            // The actual Edit_Request fields are nested in value.fields
+            const actualFields = requestFields.value?.fields || requestFields;
+            console.log(`🔍 Edit Request ${i} actual fields:`, actualFields);
+            
+            const statusNum = Number(actualFields.status || 0);
             const status = statusNum === 0 ? 'pending' : statusNum === 1 ? 'approved' : 'rejected';
 
-            requests.push({
-              requestId: Number(requestFields.request_id),
-              pageId: Number(requestFields.page_id),
-              requester: requestFields.requester || 'Unknown',
-              newWalrusBlobId: requestFields.new_walrus_blob_id,
-              status,
-              createdAt: Number(requestFields.created_at),
-              processedAt: Number(requestFields.processed_at || 0),
-            });
+            const requestId = Number(actualFields.request_id || i); // Use index as fallback
+            const pageId = Number(actualFields.page_id || 0);
+            const createdAt = Number(actualFields.created_at || 0);
+            const processedAt = Number(actualFields.processed_at || 0);
+            
+            // Get blob ID - the field is in actualFields
+            const newWalrusBlobId = actualFields.new_walrus_blob_id || '';
+            
+            console.log(`📦 Request ${i} blob ID:`, newWalrusBlobId, 'Type:', typeof newWalrusBlobId, 'Length:', newWalrusBlobId.length);
+
+            // Only add if we have valid data
+            if (!isNaN(requestId) && !isNaN(pageId)) {
+              requests.push({
+                requestId,
+                pageId,
+                requester: actualFields.requester || 'Unknown',
+                newWalrusBlobId: newWalrusBlobId || '',
+                status,
+                createdAt,
+                processedAt,
+              });
+            } else {
+              console.warn(`⚠️ Skipping request ${i} - invalid requestId or pageId`);
+            }
           }
         } catch (error) {
           // Request might not exist, continue

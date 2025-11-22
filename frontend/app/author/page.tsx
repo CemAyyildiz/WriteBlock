@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import 'easymde/dist/easymde.min.css';
 import Navbar from '@/components/Navbar';
 import { getStorageClient, getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
@@ -37,6 +39,8 @@ export default function AuthorPage() {
   const [editRequests, setEditRequests] = useState<Map<number, any[]>>(new Map()); // pageId -> EditRequest[]
   const [loadingRequests, setLoadingRequests] = useState<Set<number>>(new Set()); // pageIds being loaded
   const [processingRequest, setProcessingRequest] = useState<{ pageId: number; requestId: number } | null>(null);
+  const [viewingRequest, setViewingRequest] = useState<{ page: PageMetadata; request: any } | null>(null);
+  const [loadingRequestContent, setLoadingRequestContent] = useState(false);
 
   // Sui wallet integration
   const currentAccount = useCurrentAccount();
@@ -221,14 +225,40 @@ export default function AuthorPage() {
       }
       
       const requests = await blockchainClient.getEditRequests(pageObjectId);
+      console.log('📋 Fetched edit requests:', requests.length, 'requests');
+      requests.forEach((req, idx) => {
+        console.log(`  Request ${idx}:`, {
+          requestId: req.requestId,
+          pageId: req.pageId,
+          requester: req.requester,
+          newWalrusBlobId: req.newWalrusBlobId,
+          status: req.status,
+          hasBlobId: !!req.newWalrusBlobId,
+          blobIdLength: req.newWalrusBlobId?.length || 0,
+        });
+      });
       
       // Fetch content for each request to display preview
       const storageClient = getStorageClient();
       const requestsWithContent = await Promise.all(
         requests.map(async (req) => {
           try {
+            if (!req.newWalrusBlobId || req.newWalrusBlobId.trim() === '') {
+              console.warn('⚠️ Request missing newWalrusBlobId:', {
+                requestId: req.requestId,
+                pageId: req.pageId,
+                requester: req.requester,
+                newWalrusBlobId: req.newWalrusBlobId,
+              });
+              return {
+                ...req,
+                requester: req.requester || 'Unknown',
+              };
+            }
+            console.log('📥 Loading content for edit request:', req.requestId, 'Blob ID:', req.newWalrusBlobId);
             const blobContent = await storageClient.download(req.newWalrusBlobId);
             const blobData = JSON.parse(blobContent);
+            console.log('✅ Content loaded for request:', req.requestId, 'Content length:', blobData.content?.length || 0);
             return {
               ...req,
               requester: req.requester || 'Unknown', // Ensure requester is always present
@@ -237,8 +267,9 @@ export default function AuthorPage() {
               excerpt: blobData.excerpt,
               content: blobData.content,
             };
-          } catch {
+          } catch (error) {
             // If download fails, still return the request with requester field
+            console.error('❌ Failed to load content for request:', req.requestId, 'Error:', error);
             return {
               ...req,
               requester: req.requester || 'Unknown', // Ensure requester is always present
@@ -402,6 +433,40 @@ export default function AuthorPage() {
       ] as any,
     };
   }, []);
+
+  // Auto-load content when modal opens
+  useEffect(() => {
+    if (viewingRequest && !viewingRequest.request?.content && viewingRequest.request?.newWalrusBlobId && !loadingRequestContent) {
+      const loadContent = async () => {
+        setLoadingRequestContent(true);
+        try {
+          console.log('🔄 Auto-loading content for request:', viewingRequest.request.requestId, 'Blob ID:', viewingRequest.request.newWalrusBlobId);
+          const storageClient = getStorageClient();
+          const blobContent = await storageClient.download(viewingRequest.request.newWalrusBlobId);
+          console.log('📦 Downloaded blob content, length:', blobContent.length);
+          const blobData = JSON.parse(blobContent);
+          console.log('✅ Parsed blob data:', { title: blobData.title, hasContent: !!blobData.content });
+          setViewingRequest({
+            ...viewingRequest,
+            request: {
+              ...viewingRequest.request,
+              title: blobData.title,
+              slug: blobData.slug,
+              excerpt: blobData.excerpt,
+              content: blobData.content,
+            },
+          });
+        } catch (error) {
+          console.error('❌ Error auto-loading content:', error);
+          // Don't show alert on auto-load, user can retry manually
+        } finally {
+          setLoadingRequestContent(false);
+        }
+      };
+      loadContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewingRequest?.request?.requestId, viewingRequest?.request?.newWalrusBlobId]);
 
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle);
@@ -955,12 +1020,17 @@ export default function AuthorPage() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: number | undefined | null) => {
+    if (!timestamp || isNaN(timestamp)) return 'Unknown date';
+    try {
     return new Date(timestamp).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
+    } catch {
+      return 'Invalid date';
+    }
   };
 
   const formatAddress = (address: string | undefined | null) => {
@@ -1010,12 +1080,12 @@ export default function AuthorPage() {
                       {page.title} ({requests.length} request{requests.length > 1 ? 's' : ''})
                     </h3>
                     <div className="space-y-3">
-                      {requests.map((request) => (
-                        <div key={request.requestId} className="p-4 rounded-lg bg-navy-50 dark:bg-navy-800 border border-gray-200 dark:border-gray-700">
+                      {requests.map((request, idx) => (
+                        <div key={request?.requestId ?? idx} className="p-4 rounded-lg bg-navy-50 dark:bg-navy-800 border border-gray-200 dark:border-gray-700">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Request #{request.requestId} from {formatAddress(request?.requester)}
+                                Request #{request?.requestId ?? 'N/A'} from {formatAddress(request?.requester)}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-500">
                                 {formatDate(request.createdAt)}
@@ -1033,6 +1103,40 @@ export default function AuthorPage() {
                           )}
                           
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                // If content is not loaded, try to load it first
+                                if (!request.content && request.newWalrusBlobId) {
+                                  setLoadingRequestContent(true);
+                                  try {
+                                    const storageClient = getStorageClient();
+                                    const blobContent = await storageClient.download(request.newWalrusBlobId);
+                                    const blobData = JSON.parse(blobContent);
+                                    const updatedRequest = {
+                                      ...request,
+                                      title: blobData.title,
+                                      slug: blobData.slug,
+                                      excerpt: blobData.excerpt,
+                                      content: blobData.content,
+                                    };
+                                    setViewingRequest({ page, request: updatedRequest });
+                                  } catch (error) {
+                                    console.error('Error loading request content:', error);
+                                    alert('Failed to load content: ' + (error as Error).message);
+                                    // Still open modal even if content load fails
+                                    setViewingRequest({ page, request });
+                                  } finally {
+                                    setLoadingRequestContent(false);
+                                  }
+                                } else {
+                                  setViewingRequest({ page, request });
+                                }
+                              }}
+                              disabled={loadingRequestContent}
+                              className="px-3 py-1.5 text-sm font-medium text-navy-700 dark:text-navy-300 bg-navy-100 dark:bg-navy-800 hover:bg-navy-200 dark:hover:bg-navy-700 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {loadingRequestContent ? '⏳ Loading...' : '👁️ View Content'}
+                            </button>
                             <button
                               onClick={() => handleApproveRequest(page.page_id, request.requestId)}
                               disabled={processingRequest?.pageId === page.page_id && processingRequest?.requestId === request.requestId}
@@ -1170,14 +1274,14 @@ export default function AuthorPage() {
                     URL Slug *
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={slug}
+                  <input
+                    type="text"
+                    value={slug}
                       onChange={(e) => {
                         setSlug(e.target.value);
                         setSlugError(null);
                       }}
-                      placeholder="getting-started-writeblock"
+                    placeholder="getting-started-writeblock"
                       className={`modern-input font-mono ${slugError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     />
                     {isCheckingSlug && (
@@ -1191,9 +1295,9 @@ export default function AuthorPage() {
                       ⚠️ {slugError}
                     </p>
                   ) : (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
-                      URL: yoursite.com/{slug || 'slug'}
-                    </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                    URL: yoursite.com/{slug || 'slug'}
+                  </p>
                   )}
                 </div>
 
@@ -1238,7 +1342,7 @@ export default function AuthorPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {editingPage && (
-                      <button
+                  <button
                         onClick={() => {
                           setEditingPage(null);
                           setTitle('');
@@ -1259,17 +1363,17 @@ export default function AuthorPage() {
                       className="modern-button inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {(isSaving || isUpdating) ? (
-                        <>
-                          <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <>
+                        <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                           <span>{editingPage ? 'Updating...' : 'Publishing...'}</span>
-                        </>
-                      ) : (
-                        <>
+                      </>
+                    ) : (
+                      <>
                           <span>{editingPage ? '💾' : '🚀'}</span>
                           <span>{editingPage ? 'Update Article' : 'Publish Article'}</span>
-                        </>
-                      )}
-                    </button>
+                      </>
+                    )}
+                  </button>
                   </div>
                 </div>
               </div>
@@ -1449,6 +1553,165 @@ export default function AuthorPage() {
                   <>
                     <span>🗑️</span>
                     <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Edit Request Content Modal */}
+      {viewingRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="glass-card p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+              Edit Request Content
+            </h2>
+            <div className="mb-4 space-y-2">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold">Request #:</span> {viewingRequest.request?.requestId ?? 'N/A'}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold">From:</span> {formatAddress(viewingRequest.request?.requester)}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold">Date:</span> {formatDate(viewingRequest.request?.createdAt)}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-semibold">Article:</span> {viewingRequest.page.title}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-navy-800 dark:text-navy-200 mb-3">
+                Proposed Content:
+              </h3>
+              <div className="glass-card p-6 max-h-[60vh] overflow-y-auto">
+                {loadingRequestContent ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block w-8 h-8 border-4 border-navy-600 border-t-neon-green rounded-full animate-spin"></div>
+                    <p className="mt-4 text-gray-500 dark:text-gray-400">Loading content from Walrus...</p>
+                  </div>
+                ) : viewingRequest.request?.content ? (
+                  <div className="markdown-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {viewingRequest.request.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="space-y-4 text-center py-8">
+                    <div className="space-y-2">
+                      <p className="text-gray-500 dark:text-gray-400">
+                        ⏳ Content is being replicated to Walrus network...
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        This may take a few minutes. The blob has been uploaded but may not be available on all aggregators yet.
+                      </p>
+                    </div>
+                    {viewingRequest.request?.newWalrusBlobId ? (
+                      <div className="space-y-3">
+                        <div className="p-3 rounded-lg bg-navy-50 dark:bg-navy-800 border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                            Blob ID:
+                          </p>
+                          <p className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                            {viewingRequest.request.newWalrusBlobId}
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setLoadingRequestContent(true);
+                            try {
+                              console.log('🔄 Manual retry loading content, Blob ID:', viewingRequest.request?.newWalrusBlobId);
+                              const storageClient = getStorageClient();
+                              const blobContent = await storageClient.download(viewingRequest.request!.newWalrusBlobId);
+                              console.log('📦 Downloaded blob content, length:', blobContent.length);
+                              const blobData = JSON.parse(blobContent);
+                              console.log('✅ Parsed blob data:', { title: blobData.title, hasContent: !!blobData.content });
+                              setViewingRequest({
+                                ...viewingRequest!,
+                                request: {
+                                  ...viewingRequest!.request,
+                                  title: blobData.title,
+                                  slug: blobData.slug,
+                                  excerpt: blobData.excerpt,
+                                  content: blobData.content,
+                                },
+                              });
+                            } catch (error) {
+                              console.error('❌ Error loading content:', error);
+                              const errorMsg = (error as Error).message;
+                              if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+                                alert('⏳ Blob is still being replicated to Walrus network.\n\nThis usually takes a few minutes. Please try again in a moment.\n\nBlob ID: ' + viewingRequest.request?.newWalrusBlobId);
+                              } else {
+                                alert('Failed to load content: ' + errorMsg + '\n\nBlob ID: ' + viewingRequest.request?.newWalrusBlobId);
+                              }
+                            } finally {
+                              setLoadingRequestContent(false);
+                            }
+                          }}
+                          disabled={loadingRequestContent}
+                          className="px-4 py-2 text-sm font-medium text-white bg-neon-green hover:bg-neon-green/90 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {loadingRequestContent ? (
+                            <>
+                              <div className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                              Loading...
+                            </>
+                          ) : (
+                            '🔄 Retry Load Content'
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-red-500 dark:text-red-400">
+                        Error: No blob ID available for this request
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setViewingRequest(null)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-navy-800 hover:bg-gray-200 dark:hover:bg-navy-700 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  if (viewingRequest) {
+                    handleRejectRequest(viewingRequest.page.page_id, viewingRequest.request.requestId);
+                    setViewingRequest(null);
+                  }
+                }}
+                disabled={processingRequest?.pageId === viewingRequest?.page.page_id && processingRequest?.requestId === viewingRequest?.request?.requestId}
+                className="flex-1 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
+              >
+                ❌ Reject
+              </button>
+              <button
+                onClick={() => {
+                  if (viewingRequest) {
+                    handleApproveRequest(viewingRequest.page.page_id, viewingRequest.request.requestId);
+                    setViewingRequest(null);
+                  }
+                }}
+                disabled={processingRequest?.pageId === viewingRequest?.page.page_id && processingRequest?.requestId === viewingRequest?.request?.requestId}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-neon-green hover:bg-neon-green/90 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {processingRequest?.pageId === viewingRequest?.page.page_id && processingRequest?.requestId === viewingRequest?.request?.requestId ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✅</span>
+                    <span>Approve</span>
                   </>
                 )}
               </button>
