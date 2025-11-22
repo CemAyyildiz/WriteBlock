@@ -26,6 +26,12 @@ export default function AuthorPage() {
   const [txInfo, setTxInfo] = useState<{ walrusBlobId: string; txHash: string } | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  
+  // Edit/Delete states
+  const [editingPage, setEditingPage] = useState<PageMetadata | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmPage, setDeleteConfirmPage] = useState<PageMetadata | null>(null);
 
   // Sui wallet integration
   const currentAccount = useCurrentAccount();
@@ -105,8 +111,36 @@ export default function AuthorPage() {
         try {
           const metadata = await blockchainClient.getPageMetadata(pageId);
           
-          // Only include pages authored by current user
-          if (metadata.author.toLowerCase() === userAddress.toLowerCase()) {
+          // Only include pages authored by current user and not deleted
+          if (metadata.author.toLowerCase() === userAddress.toLowerCase() && !metadata.deleted) {
+            // Try to fetch content from Walrus to get title, excerpt, slug
+            let title = `Article #${metadata.pageId}`;
+            let excerpt = 'Click to view content';
+            let slug = `page-${metadata.pageId}`;
+            
+            try {
+              const storageClient = getStorageClient();
+              const blobContent = await storageClient.download(metadata.walrusBlobId);
+              
+              try {
+                const blobData = JSON.parse(blobContent);
+                title = blobData.title || title;
+                excerpt = blobData.excerpt || excerpt;
+                slug = blobData.slug || slug;
+              } catch {
+                // Old format - extract from markdown
+                const titleMatch = blobContent.match(/^#\s+(.+)$/m);
+                if (titleMatch) {
+                  title = titleMatch[1];
+                }
+                const contentWithoutTitle = blobContent.replace(/^#\s+.+$/m, '').trim();
+                const firstParagraph = contentWithoutTitle.split('\n\n')[0];
+                excerpt = firstParagraph ? (firstParagraph.substring(0, 150) + (firstParagraph.length > 150 ? '...' : '')) : excerpt;
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch content for page ${metadata.pageId}:`, err);
+            }
+            
             userPages.push({
               page_id: metadata.pageId,
               walrus_blob_id: metadata.walrusBlobId,
@@ -114,9 +148,9 @@ export default function AuthorPage() {
               author: metadata.author,
               created_at: metadata.createdAt,
               updated_at: metadata.updatedAt,
-              slug: `page-${metadata.pageId}`,
-              title: `Article #${metadata.pageId}`,
-              excerpt: 'Click to view content',
+              slug,
+              title,
+              excerpt,
             });
           }
         } catch (err) {
@@ -354,6 +388,257 @@ export default function AuthorPage() {
     }
   };
 
+  const handleEdit = async (page: PageMetadata) => {
+    try {
+      // Fetch content from Walrus
+      const storageClient = getStorageClient();
+      const blobContent = await storageClient.download(page.walrus_blob_id);
+      
+      let blobData: any;
+      try {
+        blobData = JSON.parse(blobContent);
+        setTitle(blobData.title || '');
+        setSlug(blobData.slug || `page-${page.page_id}`);
+        setExcerpt(blobData.excerpt || '');
+        setContent(blobData.content || '');
+      } catch {
+        // Old format - just markdown
+        setTitle(page.title || '');
+        setSlug(page.slug || `page-${page.page_id}`);
+        setExcerpt(page.excerpt || '');
+        setContent(blobContent);
+      }
+      
+      setEditingPage(page);
+      setSaveSuccess(false);
+      setTxInfo(null);
+      
+      // Scroll to editor
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error('Error loading page for edit:', error);
+      alert('Failed to load page content: ' + (error as Error).message);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingPage) return;
+    
+    if (!title.trim()) {
+      alert('Please enter a title');
+      return;
+    }
+    if (!slug.trim()) {
+      alert('Please enter a slug');
+      return;
+    }
+    if (!content.trim()) {
+      alert('Please write some content');
+      return;
+    }
+
+    if (config.blockchain === 'sui') {
+      if (!currentAccount) {
+        alert('Please connect your Sui wallet first');
+        return;
+      }
+      if (!authorCapId) {
+        alert('You need Author capability to update pages.');
+        return;
+      }
+    }
+
+    setIsUpdating(true);
+    setSaveSuccess(false);
+    setTxInfo(null);
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      const storageClient = getStorageClient();
+      
+      // Check if slug changed and is unique (excluding current page)
+      if (slug !== editingPage.slug) {
+        const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+        if (envRegistryId) {
+          const pageIds = await blockchainClient.getAllPages(envRegistryId);
+          
+          for (const pageId of pageIds) {
+            try {
+              const metadata = await blockchainClient.getPageMetadata(pageId);
+              if (metadata.pageId === editingPage.page_id) continue; // Skip current page
+              
+              const blobContent = await storageClient.download(metadata.walrusBlobId);
+              try {
+                const blobData = JSON.parse(blobContent);
+                if (blobData.slug === slug) {
+                  alert(`⚠️ Bu slug zaten kullanılıyor: "${slug}"`);
+                  setIsUpdating(false);
+                  return;
+                }
+              } catch {
+                continue;
+              }
+            } catch (err) {
+              continue;
+            }
+          }
+        }
+      }
+      
+      // Create JSON blob with updated content
+      const blobData = {
+        slug: slug,
+        title: title,
+        excerpt: excerpt || '',
+        content: content,
+      };
+      
+      // Upload updated content
+      const newWalrusBlobId = await storageClient.upload(JSON.stringify(blobData));
+      console.log('✅ Updated content uploaded:', newWalrusBlobId);
+      
+      // Update on blockchain
+      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
+      
+      if (!capabilityId) {
+        throw new Error('Author capability not found');
+      }
+
+      // Get page object ID from registry
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      if (!envRegistryId) {
+        throw new Error('Registry ID not configured');
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pageId of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pageId);
+        if (metadata.pageId === editingPage.page_id) {
+          pageObjectId = pageId;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        throw new Error('Page object ID not found');
+      }
+
+      const txResult = await blockchainClient.updatePageContent(
+        capabilityId,
+        pageObjectId,
+        newWalrusBlobId
+      );
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Update transaction failed');
+      }
+      
+      console.log('✅ Page updated:', txResult.txHash);
+      
+      setTxInfo({
+        walrusBlobId: newWalrusBlobId,
+        txHash: txResult.txHash,
+      });
+      setSaveSuccess(true);
+      
+      // Clear form and editing state
+      setTitle('');
+      setSlug('');
+      setExcerpt('');
+      setContent('');
+      setEditingPage(null);
+      
+      // Refresh user's pages
+      if (config.wallet === 'sui' && currentAccount) {
+        await fetchUserPages(currentAccount.address);
+      }
+      
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 5000);
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Update failed: ' + (error as Error).message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmPage) return;
+    
+    if (config.blockchain === 'sui') {
+      if (!currentAccount) {
+        alert('Please connect your Sui wallet first');
+        return;
+      }
+      if (!authorCapId) {
+        alert('You need Author capability to delete pages.');
+        return;
+      }
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
+      
+      if (!capabilityId) {
+        throw new Error('Author capability not found');
+      }
+
+      // Get page object ID from registry
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      if (!envRegistryId) {
+        throw new Error('Registry ID not configured');
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pageId of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pageId);
+        if (metadata.pageId === deleteConfirmPage.page_id) {
+          pageObjectId = pageId;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        throw new Error('Page object ID not found');
+      }
+
+      const txResult = await blockchainClient.deletePage(
+        capabilityId,
+        pageObjectId
+      );
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Delete transaction failed');
+      }
+      
+      console.log('✅ Page deleted:', txResult.txHash);
+      
+      // Close confirmation dialog
+      setDeleteConfirmPage(null);
+      
+      // Refresh user's pages
+      if (config.wallet === 'sui' && currentAccount) {
+        await fetchUserPages(currentAccount.address);
+      }
+      
+      alert('✅ Page deleted successfully!');
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Delete failed: ' + (error as Error).message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -380,6 +665,55 @@ export default function AuthorPage() {
             Create and publish decentralized articles
           </p>
         </div>
+
+        {/* My Articles Section */}
+        {pages.length > 0 && (
+          <div className="mb-8 glass-card p-6">
+            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+              My Articles ({pages.length})
+            </h2>
+            <div className="space-y-3">
+              {pages.map((page) => (
+                <div
+                  key={page.page_id}
+                  className="p-4 rounded-xl bg-white dark:bg-navy-900 border border-gray-200 dark:border-gray-700 hover:border-neon-green/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-navy-800 dark:text-navy-200 mb-1">
+                        {page.title}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
+                        {page.excerpt}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                        <span>Slug: {page.slug}</span>
+                        <span>•</span>
+                        <span>Updated: {formatDate(page.updated_at)}</span>
+                        <span>•</span>
+                        <span>Version: {page.version}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => handleEdit(page)}
+                        className="px-3 py-1.5 text-sm font-medium text-navy-700 dark:text-navy-300 bg-navy-100 dark:bg-navy-800 hover:bg-navy-200 dark:hover:bg-navy-700 rounded-lg transition-colors"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmPage(page)}
+                        className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Editor */}
@@ -500,23 +834,41 @@ export default function AuthorPage() {
                   <div className="text-sm text-gray-600 dark:text-gray-400 font-mono">
                     <span className="font-bold text-navy-700 dark:text-navy-300">{content.length}</span> characters
                   </div>
-                  <button
-                    onClick={handlePublish}
-                    disabled={isSaving || !title || !slug || !content || !!slugError || isCheckingSlug}
-                    className="modern-button inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Publishing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>🚀</span>
-                        <span>Publish Article</span>
-                      </>
+                  <div className="flex items-center gap-3">
+                    {editingPage && (
+                      <button
+                        onClick={() => {
+                          setEditingPage(null);
+                          setTitle('');
+                          setSlug('');
+                          setExcerpt('');
+                          setContent('');
+                          setSaveSuccess(false);
+                          setTxInfo(null);
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-navy-800 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
                     )}
-                  </button>
+                    <button
+                      onClick={editingPage ? handleUpdate : handlePublish}
+                      disabled={(isSaving || isUpdating) || !title || !slug || !content || !!slugError || isCheckingSlug}
+                      className="modern-button inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(isSaving || isUpdating) ? (
+                        <>
+                          <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>{editingPage ? 'Updating...' : 'Publishing...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{editingPage ? '💾' : '🚀'}</span>
+                          <span>{editingPage ? 'Update Article' : 'Publish Article'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -662,6 +1014,46 @@ export default function AuthorPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmPage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="glass-card p-8 max-w-md w-full border-2 border-red-200 dark:border-red-900">
+            <h3 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+              Delete Article?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete <strong>"{deleteConfirmPage.title}"</strong>? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setDeleteConfirmPage(null)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-navy-800 hover:bg-gray-200 dark:hover:bg-navy-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🗑️</span>
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

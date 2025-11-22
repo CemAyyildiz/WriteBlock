@@ -70,6 +70,8 @@ public struct Page_Metadata has key {
     updated_at: u64,
     /// Timestamp when page was created
     created_at: u64,
+    /// Whether the page is deleted (soft delete)
+    deleted: bool,
 }
 
 // ==================== Events ====================
@@ -168,6 +170,7 @@ public entry fun create_page(
         author,
         updated_at: timestamp,
         created_at: timestamp,
+        deleted: false,
     };
     
     let page_metadata_address = object::uid_to_address(&page_metadata.id);
@@ -191,23 +194,46 @@ public entry fun update_page_content(
     new_walrus_blob_id: String,
     ctx: &mut TxContext
 ) {
+    // Check if page is deleted
+    assert!(!page.deleted, EPageNotFound);
+    
     // Update the BLOB ID and increment version
     page.walrus_blob_id = new_walrus_blob_id;
     page.version = page.version + 1;
     page.updated_at = tx_context::epoch_timestamp_ms(ctx);
 }
 
+/// Delete a page (soft delete - marks as deleted)
+/// Only callable by the page author
+#[allow(lint(public_entry))]
+public entry fun delete_page(
+    _author_cap: &Author_Capability,
+    page: &mut Page_Metadata,
+    ctx: &mut TxContext
+) {
+    // Check if page is already deleted
+    assert!(!page.deleted, EPageNotFound);
+    
+    // Check if caller is the author
+    assert!(page.author == tx_context::sender(ctx), ENotAuthorized);
+    
+    // Mark as deleted (soft delete)
+    page.deleted = true;
+    page.updated_at = tx_context::epoch_timestamp_ms(ctx);
+}
+
 // ==================== View Functions ====================
 
 /// Get page information
-public fun get_page_info(page: &Page_Metadata): (u64, String, u64, address, u64, u64) {
+public fun get_page_info(page: &Page_Metadata): (u64, String, u64, address, u64, u64, bool) {
     (
         page.page_id,
         page.walrus_blob_id,
         page.version,
         page.author,
         page.created_at,
-        page.updated_at
+        page.updated_at,
+        page.deleted
     )
 }
 

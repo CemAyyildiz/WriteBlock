@@ -45,21 +45,25 @@ export default function PostPage() {
           if (pageId < pageIds.length) {
             const pageObjectId = pageIds[pageId];
             const metadata = await blockchainClient.getPageMetadata(pageObjectId);
-            const blobContent = await storageClient.download(metadata.walrusBlobId);
             
-            // Try to parse as JSON (new format) or use as markdown (old format)
-            let blobData: any;
-            let markdownContent: string;
-            try {
-              blobData = JSON.parse(blobContent);
-              markdownContent = blobData.content || blobContent;
-            } catch {
-              // Old format - just markdown
-              blobData = { slug: `page-${pageId}`, title: `Article #${pageId}`, excerpt: '', content: blobContent };
-              markdownContent = blobContent;
+            // Skip deleted pages
+            if (!metadata.deleted) {
+              const blobContent = await storageClient.download(metadata.walrusBlobId);
+              
+              // Try to parse as JSON (new format) or use as markdown (old format)
+              let blobData: any;
+              let markdownContent: string;
+              try {
+                blobData = JSON.parse(blobContent);
+                markdownContent = blobData.content || blobContent;
+              } catch {
+                // Old format - just markdown
+                blobData = { slug: `page-${pageId}`, title: `Article #${pageId}`, excerpt: '', content: blobContent };
+                markdownContent = blobContent;
+              }
+              
+              foundPage = { metadata, content: markdownContent, blobData };
             }
-            
-            foundPage = { metadata, content: markdownContent, blobData };
           }
         } else {
           // Search by slug - iterate through all pages
@@ -67,6 +71,12 @@ export default function PostPage() {
             try {
               const pageObjectId = pageIds[i];
               const metadata = await blockchainClient.getPageMetadata(pageObjectId);
+              
+              // Skip deleted pages
+              if (metadata.deleted) {
+                continue;
+              }
+              
               const blobContent = await storageClient.download(metadata.walrusBlobId);
               
               // Try to parse as JSON (new format) or use as markdown (old format)

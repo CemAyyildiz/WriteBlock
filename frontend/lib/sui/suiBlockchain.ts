@@ -68,7 +68,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         arguments: [
           tx.object(authorCapId),
           tx.object(registryId),
-          tx.pure(bcs.string().serialize(walrusBlobId).toBytes()), // BCS string serialization with .toBytes()
+          tx.pure(bcs.string().serialize(walrusBlobId).toBytes()), // BCS string serialization
         ],
       });
 
@@ -130,6 +130,48 @@ export class SuiBlockchainClient implements IBlockchainClient {
         error: error.message || 'Failed to update page',
       };
   }
+  }
+
+  /**
+   * Delete a page (soft delete)
+   */
+  async deletePage(
+    authorCapId: string,
+    pageId: string
+  ): Promise<TransactionResult> {
+    try {
+      if (!this.walletSignAndExecute) {
+        throw new Error('Wallet not connected. Please connect your wallet first.');
+      }
+
+      if (!this.packageId) {
+        throw new Error('Package ID not configured. Set NEXT_PUBLIC_PACKAGE_ID in .env');
+      }
+
+      const tx = new Transaction();
+      
+      tx.moveCall({
+        target: `${this.packageId}::contract::delete_page`,
+        arguments: [
+          tx.object(authorCapId),
+          tx.object(pageId),
+        ],
+      });
+
+      const result = await this.walletSignAndExecute(tx);
+      
+      return {
+        success: true,
+        txHash: result.digest,
+      };
+    } catch (error: any) {
+      console.error('Error deleting page:', error);
+      return {
+        success: false,
+        txHash: '',
+        error: error.message || 'Failed to delete page',
+      };
+    }
   }
 
   /**
@@ -197,6 +239,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
         author: fields.author,
         createdAt: Number(fields.created_at),
         updatedAt: Number(fields.updated_at),
+        deleted: fields.deleted || false,
       };
     } catch (error: any) {
       console.error('Error fetching page metadata:', error);

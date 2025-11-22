@@ -31,6 +31,17 @@ export interface IBlockchainClient {
   ): Promise<TransactionResult>;
 
   /**
+   * Delete a page (soft delete)
+   * @param authorCapId - Author capability object ID
+   * @param pageId - Page metadata object ID
+   * @returns Transaction result
+   */
+  deletePage(
+    authorCapId: string,
+    pageId: string
+  ): Promise<TransactionResult>;
+
+  /**
    * Grant author capability to an address
    * @param adminCapId - Admin capability object ID
    * @param recipientAddress - Address to receive capability
@@ -76,6 +87,7 @@ export interface PageMetadata {
   author: string;
   createdAt: number;
   updatedAt: number;
+  deleted?: boolean;
 }
 
 export interface RegistryStats {

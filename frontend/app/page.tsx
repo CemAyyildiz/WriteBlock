@@ -38,6 +38,11 @@ export default function Dashboard() {
           try {
             const metadata = await blockchainClient.getPageMetadata(pageId);
             
+            // Skip deleted pages
+            if (metadata.deleted) {
+              continue;
+            }
+            
             // Try to fetch content from Walrus to extract title, excerpt, and slug
             let title = `Article #${metadata.pageId}`;
             let excerpt = `Published on ${new Date(metadata.updatedAt).toLocaleDateString()} • Stored on Walrus`;

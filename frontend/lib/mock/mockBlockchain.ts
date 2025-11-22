@@ -32,6 +32,7 @@ export class MockBlockchainClient implements IBlockchainClient {
       author: '0xmock_author_address',
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      deleted: false,
     };
 
     this.pages.set(pageId, page);
@@ -54,7 +55,7 @@ export class MockBlockchainClient implements IBlockchainClient {
     await this.delay(1500);
 
     const page = this.pages.get(pageId);
-    if (!page) {
+    if (!page || page.deleted) {
       return {
         success: false,
         txHash: '',
@@ -68,6 +69,33 @@ export class MockBlockchainClient implements IBlockchainClient {
 
     const txHash = this.generateTxHash();
     console.log(`[Mock Blockchain] Updated page: ${pageId}, New version: ${page.version}, TX: ${txHash}`);
+
+    return {
+      success: true,
+      txHash,
+    };
+  }
+
+  async deletePage(
+    authorCapId: string,
+    pageId: string
+  ): Promise<TransactionResult> {
+    await this.delay(1500);
+
+    const page = this.pages.get(pageId);
+    if (!page || page.deleted) {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Page not found',
+      };
+    }
+
+    page.deleted = true;
+    page.updatedAt = Date.now();
+
+    const txHash = this.generateTxHash();
+    console.log(`[Mock Blockchain] Deleted page: ${pageId}, TX: ${txHash}`);
 
     return {
       success: true,
