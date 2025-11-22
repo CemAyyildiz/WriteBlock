@@ -232,6 +232,12 @@ export default function AuthorPage() {
         for (const pageId of pageIds) {
           try {
             const metadata = await blockchainClient.getPageMetadata(pageId);
+            
+            // Skip deleted pages - deleted slugs can be reused
+            if (metadata.deleted) {
+              continue;
+            }
+            
             const blobContent = await storageClient.download(metadata.walrusBlobId);
 
             try {
@@ -309,6 +315,12 @@ export default function AuthorPage() {
         for (const pageId of pageIds) {
           try {
             const metadata = await blockchainClient.getPageMetadata(pageId);
+            
+            // Skip deleted pages - deleted slugs can be reused
+            if (metadata.deleted) {
+              continue;
+            }
+            
             const blobContent = await storageClient.download(metadata.walrusBlobId);
             
             // Try to parse as JSON (new format)
@@ -466,6 +478,11 @@ export default function AuthorPage() {
             try {
               const metadata = await blockchainClient.getPageMetadata(pageId);
               if (metadata.pageId === editingPage.page_id) continue; // Skip current page
+              
+              // Skip deleted pages - deleted slugs can be reused
+              if (metadata.deleted) {
+                continue;
+              }
               
               const blobContent = await storageClient.download(metadata.walrusBlobId);
               try {
