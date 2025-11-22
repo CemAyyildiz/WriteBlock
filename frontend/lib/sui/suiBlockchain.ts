@@ -521,7 +521,7 @@ export class SuiBlockchainClient implements IBlockchainClient {
             requests.push({
               requestId: Number(requestFields.request_id),
               pageId: Number(requestFields.page_id),
-              requester: requestFields.requester,
+              requester: requestFields.requester || 'Unknown',
               newWalrusBlobId: requestFields.new_walrus_blob_id,
               status,
               createdAt: Number(requestFields.created_at),

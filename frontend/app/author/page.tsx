@@ -231,13 +231,18 @@ export default function AuthorPage() {
             const blobData = JSON.parse(blobContent);
             return {
               ...req,
+              requester: req.requester || 'Unknown', // Ensure requester is always present
               title: blobData.title,
               slug: blobData.slug,
               excerpt: blobData.excerpt,
               content: blobData.content,
             };
           } catch {
-            return req;
+            // If download fails, still return the request with requester field
+            return {
+              ...req,
+              requester: req.requester || 'Unknown', // Ensure requester is always present
+            };
           }
         })
       );
@@ -958,7 +963,8 @@ export default function AuthorPage() {
     });
   };
 
-  const formatAddress = (address: string) => {
+  const formatAddress = (address: string | undefined | null) => {
+    if (!address) return 'Unknown';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
 
@@ -1009,7 +1015,7 @@ export default function AuthorPage() {
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Request #{request.requestId} from {formatAddress(request.requester)}
+                                Request #{request.requestId} from {formatAddress(request?.requester)}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-500">
                                 {formatDate(request.createdAt)}
@@ -1050,17 +1056,6 @@ export default function AuthorPage() {
                               className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
                             >
                               ❌ Reject
-                            </button>
-                            <button
-                              onClick={() => {
-                                const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-                                if (envRegistryId) {
-                                  fetchEditRequests(page.page_id);
-                                }
-                              }}
-                              className="px-3 py-1.5 text-sm font-medium text-navy-700 dark:text-navy-300 bg-navy-100 dark:bg-navy-800 hover:bg-navy-200 dark:hover:bg-navy-700 rounded-lg transition-colors"
-                            >
-                              👁️ View Content
                             </button>
                           </div>
                         </div>
