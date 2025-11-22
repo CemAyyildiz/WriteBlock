@@ -18,14 +18,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Walrus publisher URL - Alternatif: daha hızlı publisher kullan
+    // Walrus publisher URL - Resmi publisher kullan
     const publisherUrl = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER_URL 
-      || 'https://walrus-testnet-publisher.nami.cloud'; // Alternatif publisher (daha hızlı olabilir)
+      || 'https://publisher.walrus-testnet.walrus.space';
 
     console.log('📤 Uploading to Walrus:', publisherUrl);
+    console.log('📦 Content size:', body.length, 'bytes');
 
     // Walrus'a PUT request gönder (doğru endpoint: /v1/blobs)
-    // Query parametreleri: epochs=5 (5 epoch sakla), deletable=true (silinebilir)
+    // Query parametreleri: epochs=5 (5 epoch sakla)
     const walrusResponse = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
       method: 'PUT',
       body: body,
@@ -50,14 +51,17 @@ export async function POST(request: NextRequest) {
 
     // Walrus response'u parse et
     const result = await walrusResponse.json();
+    console.log('📋 Full Walrus response:', JSON.stringify(result, null, 2));
     
     // Blob ID'yi çıkar
     let blobId: string;
     
     if (result.newlyCreated?.blobObject?.blobId) {
       blobId = result.newlyCreated.blobObject.blobId;
+      console.log('✅ NEW blob created:', blobId);
     } else if (result.alreadyCertified?.blobId) {
       blobId = result.alreadyCertified.blobId;
+      console.log('✅ EXISTING blob found:', blobId);
     } else {
       console.error('❌ Invalid Walrus response:', result);
       return NextResponse.json(
@@ -66,7 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Walrus upload successful:', blobId);
+    console.log('🔗 Aggregator URL for testing:', `https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`);
 
     // Başarılı response
     return NextResponse.json({

@@ -54,6 +54,13 @@ export interface IBlockchainClient {
    * @returns Registry statistics
    */
   getRegistryStats(registryId: string): Promise<RegistryStats>;
+
+  /**
+   * Get all page IDs from registry
+   * @param registryId - Registry object ID
+   * @returns Array of page object IDs
+   */
+  getAllPages(registryId: string): Promise<string[]>;
 }
 
 export interface TransactionResult {

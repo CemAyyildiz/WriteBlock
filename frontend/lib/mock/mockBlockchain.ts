@@ -106,6 +106,11 @@ export class MockBlockchainClient implements IBlockchainClient {
     return this.registry;
   }
 
+  async getAllPages(registryId: string): Promise<string[]> {
+    await this.delay(300);
+    return Array.from(this.pages.keys());
+  }
+
   private generateTxHash(): string {
     return `0x${Math.random().toString(16).substring(2, 66).padEnd(64, '0')}`;
   }

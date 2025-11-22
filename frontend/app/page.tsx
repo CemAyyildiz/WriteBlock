@@ -1,13 +1,123 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
-import { getAllPages } from '@/lib/mockData';
+import { getBlockchainClient, getStorageClient, getProviderConfig } from '@/lib/client';
 import { PageMetadata } from '@/types';
 
 export default function Dashboard() {
-  const [pages] = useState<PageMetadata[]>(getAllPages());
+  const [pages, setPages] = useState<PageMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const config = getProviderConfig();
+
+  // Fetch all pages from blockchain
+  useEffect(() => {
+    const fetchPages = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const blockchainClient = getBlockchainClient();
+        const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+
+        if (!registryId) {
+          throw new Error('Registry ID not configured');
+        }
+
+        // Get all page IDs from registry
+        const pageIds = await blockchainClient.getAllPages(registryId);
+        console.log('📚 Found pages:', pageIds.length);
+
+        // Fetch metadata for each page
+        const pagesData: PageMetadata[] = [];
+        const storageClient = getStorageClient();
+
+        for (const pageId of pageIds) {
+          try {
+            const metadata = await blockchainClient.getPageMetadata(pageId);
+            
+            // Try to fetch content from Walrus to extract title, excerpt, and slug
+            let title = `Article #${metadata.pageId}`;
+            let excerpt = `Published on ${new Date(metadata.updatedAt).toLocaleDateString()} • Stored on Walrus`;
+            let slug = `page-${metadata.pageId}`;
+            
+            try {
+              console.log(`🐋 Fetching content for page ${metadata.pageId} from Walrus:`, metadata.walrusBlobId);
+              const blobContent = await storageClient.download(metadata.walrusBlobId);
+              
+              // Try to parse as JSON (new format) or use as markdown (old format)
+              let blobData: any;
+              let markdownContent: string;
+              try {
+                blobData = JSON.parse(blobContent);
+                markdownContent = blobData.content || blobContent;
+                title = blobData.title || title;
+                excerpt = blobData.excerpt || excerpt;
+                slug = blobData.slug || slug;
+              } catch {
+                // Old format - just markdown, extract from content
+                markdownContent = blobContent;
+                const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+                if (titleMatch) {
+                  title = titleMatch[1];
+                }
+                
+                // Create excerpt (first paragraph after title)
+                const contentWithoutTitle = markdownContent.replace(/^#\s+.+$/m, '').trim();
+                const lines = contentWithoutTitle.split('\n').filter(line => line.trim());
+                const firstParagraph = lines[0] || '';
+                excerpt = firstParagraph.substring(0, 150) + (firstParagraph.length > 150 ? '...' : '');
+              }
+              
+              console.log(`✅ Content loaded for page ${metadata.pageId}:`, title, `(slug: ${slug})`);
+            } catch (walrusErr: any) {
+              console.warn(`⚠️ Failed to fetch Walrus content for page ${metadata.pageId}:`, walrusErr?.message || walrusErr);
+              console.warn(`   Blob ID: ${metadata.walrusBlobId}`);
+              
+              // 404 hatası ise blob henüz replicate olmamış olabilir
+              if (walrusErr?.message?.includes('404') || walrusErr?.message?.includes('not found')) {
+                excerpt = `⏳ Content is being replicated to Walrus network... • Blob ID: ${metadata.walrusBlobId.substring(0, 20)}...`;
+              } else {
+                excerpt = `📦 Blob ID: ${metadata.walrusBlobId.substring(0, 20)}... • Click to load content`;
+              }
+              // Use fallback title and excerpt
+            }
+            
+            // Create page metadata with slug
+            const pageData: PageMetadata = {
+              page_id: metadata.pageId,
+              walrus_blob_id: metadata.walrusBlobId,
+              version: metadata.version,
+              author: metadata.author,
+              created_at: metadata.createdAt,
+              updated_at: metadata.updatedAt,
+              slug,
+              title,
+              excerpt,
+            };
+            
+            pagesData.push(pageData);
+          } catch (err) {
+            console.warn(`Failed to fetch page ${pageId}:`, err);
+          }
+        }
+
+        // Sort by updated_at (newest first)
+        pagesData.sort((a, b) => b.updated_at - a.updated_at);
+        
+        setPages(pagesData);
+      } catch (err: any) {
+        console.error('Error fetching pages:', err);
+        setError(err.message || 'Failed to load articles');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPages();
+  }, []);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -20,6 +130,46 @@ export default function Dashboard() {
   const formatAddress = (address: string) => {
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-6 py-24 text-center">
+          <div className="inline-block w-16 h-16 border-4 border-navy-600 border-t-neon-green rounded-full animate-spin"></div>
+          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 font-medium">
+            Loading articles from blockchain...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-6 py-24 text-center">
+          <div className="text-7xl mb-6">⚠️</div>
+          <h2 className="text-3xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+            Failed to Load Articles
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="modern-button inline-flex items-center gap-2"
+          >
+            <span>🔄</span>
+            <span>Retry</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-off-white dark:bg-navy-950">

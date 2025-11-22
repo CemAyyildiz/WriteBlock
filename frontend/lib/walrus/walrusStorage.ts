@@ -1,6 +1,6 @@
 /**
  * Walrus Storage Implementation
- * Real Walrus Testnet integration
+ * Direct HTTP API integration (no SDK to avoid systemObjectId issues)
  */
 
 import { IStorageClient, BlobMetadata } from '../interfaces/storage.interface';
@@ -63,29 +63,33 @@ export class WalrusStorageClient implements IStorageClient {
   }
 
   /**
-   * Download content from Walrus storage
+   * Download content from Walrus storage via API route
+   * API route alternatif aggregator endpoint'lerini dener
    * @param blobId - Blob ID to download
    * @returns Content as string
    */
   async download(blobId: string): Promise<string> {
     try {
-      // Try primary aggregator
-      let response = await fetch(`${this.aggregatorUrl}/v1/${blobId}`);
+      console.log('🐋 Downloading via API route:', blobId);
       
-      // Try fallback aggregator if primary fails
-      if (!response.ok && this.aggregatorUrlFallback) {
-        console.warn('Primary aggregator failed, trying fallback...');
-        response = await fetch(`${this.aggregatorUrlFallback}/v1/${blobId}`);
-      }
+      // API route'a GET request (CORS problemi yok ve alternatif endpoint'leri dener!)
+      const response = await fetch(`/api/walrus/download?blobId=${encodeURIComponent(blobId)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain, */*',
+        },
+      });
 
       if (!response.ok) {
-        throw new Error(`Walrus download failed: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(`API download failed: ${errorData.error || response.statusText}`);
       }
 
       const content = await response.text();
+      console.log('✅ Download successful, size:', content.length);
       return content;
     } catch (error: any) {
-      console.error('Error downloading from Walrus:', error);
+      console.error('❌ Walrus download failed:', error);
       throw new Error(`Failed to download from Walrus: ${error.message}`);
     }
   }

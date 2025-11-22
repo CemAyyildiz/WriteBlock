@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'easymde/dist/easymde.min.css';
 import Navbar from '@/components/Navbar';
-import { MOCK_ADDRESSES, getAllPages } from '@/lib/mockData';
 import { getStorageClient, getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
 import { PageMetadata } from '@/types';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
@@ -14,7 +13,8 @@ const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false }
 
 export default function AuthorPage() {
   const router = useRouter();
-  const [pages] = useState<PageMetadata[]>(getAllPages());
+  const [pages, setPages] = useState<PageMetadata[]>([]);
+  const [loadingPages, setLoadingPages] = useState(false);
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -24,6 +24,8 @@ export default function AuthorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [txInfo, setTxInfo] = useState<{ walrusBlobId: string; txHash: string } | null>(null);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
 
   // Sui wallet integration
   const currentAccount = useCurrentAccount();
@@ -70,6 +72,9 @@ export default function AuthorPage() {
           if (envRegistryId) {
             setRegistryId(envRegistryId);
           }
+
+          // Fetch user's pages
+          await fetchUserPages(currentAccount.address);
         } catch (error) {
           console.error('Error fetching capabilities:', error);
         }
@@ -78,6 +83,57 @@ export default function AuthorPage() {
       fetchCapabilities();
     }
   }, [currentAccount, signAndExecuteTransaction, config.wallet]);
+
+  // Fetch pages authored by current user
+  const fetchUserPages = async (userAddress: string) => {
+    try {
+      setLoadingPages(true);
+      const blockchainClient = getBlockchainClient();
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+
+      if (!envRegistryId) {
+        console.warn('Registry ID not configured');
+        return;
+      }
+
+      // Get all page IDs from registry
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      
+      // Fetch metadata and filter by author
+      const userPages: PageMetadata[] = [];
+      for (const pageId of pageIds) {
+        try {
+          const metadata = await blockchainClient.getPageMetadata(pageId);
+          
+          // Only include pages authored by current user
+          if (metadata.author.toLowerCase() === userAddress.toLowerCase()) {
+            userPages.push({
+              page_id: metadata.pageId,
+              walrus_blob_id: metadata.walrusBlobId,
+              version: metadata.version,
+              author: metadata.author,
+              created_at: metadata.createdAt,
+              updated_at: metadata.updatedAt,
+              slug: `page-${metadata.pageId}`,
+              title: `Article #${metadata.pageId}`,
+              excerpt: 'Click to view content',
+            });
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch page ${pageId}:`, err);
+        }
+      }
+
+      // Sort by updated_at (newest first)
+      userPages.sort((a, b) => b.updated_at - a.updated_at);
+      
+      setPages(userPages);
+    } catch (error) {
+      console.error('Error fetching user pages:', error);
+    } finally {
+      setLoadingPages(false);
+    }
+  };
 
   const editorOptions = useMemo(() => {
     return {
@@ -113,7 +169,64 @@ export default function AuthorPage() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
     setSlug(autoSlug);
+    setSlugError(null); // Clear error when title changes
   };
+
+  // Check slug uniqueness when slug changes (with debounce)
+  useEffect(() => {
+    if (!slug.trim() || slug.match(/^page-\d+$/)) {
+      setSlugError(null);
+      return;
+    }
+
+    const checkSlug = async () => {
+      setIsCheckingSlug(true);
+      setSlugError(null);
+
+      try {
+        const blockchainClient = getBlockchainClient();
+        const storageClient = getStorageClient();
+        const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+
+        if (!envRegistryId) {
+          setIsCheckingSlug(false);
+          return;
+        }
+
+        const pageIds = await blockchainClient.getAllPages(envRegistryId);
+
+        for (const pageId of pageIds) {
+          try {
+            const metadata = await blockchainClient.getPageMetadata(pageId);
+            const blobContent = await storageClient.download(metadata.walrusBlobId);
+
+            try {
+              const blobData = JSON.parse(blobContent);
+              if (blobData.slug === slug) {
+                setSlugError(`Bu slug zaten kullanılıyor: "${slug}"`);
+                setIsCheckingSlug(false);
+                return;
+              }
+            } catch {
+              continue;
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+
+        setSlugError(null);
+      } catch (error) {
+        console.warn('Error checking slug:', error);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    };
+
+    // Debounce: wait 500ms after user stops typing
+    const timeoutId = setTimeout(checkSlug, 500);
+    return () => clearTimeout(timeoutId);
+  }, [slug]);
 
   const handlePublish = async () => {
     if (!title.trim()) {
@@ -150,11 +263,51 @@ export default function AuthorPage() {
     setTxInfo(null);
 
     try {
-      const storageClient = getStorageClient();
-      const newWalrusBlobId = await storageClient.upload(content);
-      console.log('✅ Content uploaded:', newWalrusBlobId);
-      
+      // Check if slug already exists
       const blockchainClient = getBlockchainClient();
+      const storageClient = getStorageClient();
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      
+      if (envRegistryId) {
+        console.log('🔍 Checking if slug already exists:', slug);
+        const pageIds = await blockchainClient.getAllPages(envRegistryId);
+        
+        for (const pageId of pageIds) {
+          try {
+            const metadata = await blockchainClient.getPageMetadata(pageId);
+            const blobContent = await storageClient.download(metadata.walrusBlobId);
+            
+            // Try to parse as JSON (new format)
+            try {
+              const blobData = JSON.parse(blobContent);
+              if (blobData.slug === slug) {
+                alert(`⚠️ Bu slug zaten kullanılıyor: "${slug}"\n\nLütfen farklı bir slug kullanın veya mevcut slug'ı düzenleyin.`);
+                setIsSaving(false);
+                return;
+              }
+            } catch {
+              // Old format - skip
+              continue;
+            }
+          } catch (err) {
+            console.warn(`Failed to check page ${pageId} for slug:`, err);
+            continue;
+          }
+        }
+        console.log('✅ Slug is unique:', slug);
+      }
+      
+      // Create JSON blob with metadata (slug, title, excerpt) + markdown content
+      const blobData = {
+        slug: slug,
+        title: title,
+        excerpt: excerpt || '',
+        content: content,
+      };
+      
+      // Upload as JSON string
+      const newWalrusBlobId = await storageClient.upload(JSON.stringify(blobData));
+      console.log('✅ Content uploaded with metadata:', newWalrusBlobId);
       
       // Use real IDs for Sui, mock IDs for mock mode
       const capabilityId = config.blockchain === 'sui' ? authorCapId! : 'mock_author_cap_id';
@@ -184,6 +337,11 @@ export default function AuthorPage() {
       setSlug('');
       setExcerpt('');
       setContent('');
+      
+      // Refresh user's pages after successful publish
+      if (config.wallet === 'sui' && currentAccount) {
+        await fetchUserPages(currentAccount.address);
+      }
       
       setTimeout(() => {
         setSaveSuccess(false);
@@ -240,7 +398,7 @@ export default function AuthorPage() {
                     <div className="font-mono text-sm font-semibold text-navy-700 dark:text-navy-300">
                       {config.wallet === 'sui' && currentAccount
                         ? `${currentAccount.address.substring(0, 10)}...${currentAccount.address.substring(currentAccount.address.length - 8)}`
-                        : `${MOCK_ADDRESSES.author1.substring(0, 10)}...${MOCK_ADDRESSES.author1.substring(MOCK_ADDRESSES.author1.length - 8)}`
+                        : 'Not connected'
                       }
                     </div>
                   </div>
@@ -275,16 +433,32 @@ export default function AuthorPage() {
                   <label className="block text-sm font-semibold text-navy-700 dark:text-navy-300 mb-2">
                     URL Slug *
                   </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="getting-started-writeblock"
-                    className="modern-input font-mono"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
-                    URL: yoursite.com/{slug || 'slug'}
-                  </p>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={slug}
+                      onChange={(e) => {
+                        setSlug(e.target.value);
+                        setSlugError(null);
+                      }}
+                      placeholder="getting-started-writeblock"
+                      className={`modern-input font-mono ${slugError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                    {isCheckingSlug && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-navy-300 border-t-neon-green rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  {slugError ? (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-2 font-medium">
+                      ⚠️ {slugError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
+                      URL: yoursite.com/{slug || 'slug'}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -328,8 +502,8 @@ export default function AuthorPage() {
                   </div>
                   <button
                     onClick={handlePublish}
-                    disabled={isSaving || !title || !slug || !content}
-                    className="modern-button inline-flex items-center gap-3"
+                    disabled={isSaving || !title || !slug || !content || !!slugError || isCheckingSlug}
+                    className="modern-button inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSaving ? (
                       <>
@@ -383,7 +557,13 @@ export default function AuthorPage() {
                     </div>
 
                     <button
-                      onClick={() => router.push(`/${slug}`)}
+                      onClick={() => {
+                        if (slug) {
+                          router.push(`/${slug}`);
+                        } else {
+                          router.push('/');
+                        }
+                      }}
                       className="modern-button w-full"
                     >
                       View Published Article →
@@ -403,9 +583,14 @@ export default function AuthorPage() {
                 <span>My Articles</span>
               </h3>
               
-              {pages.length === 0 ? (
+              {loadingPages ? (
+                <div className="text-center py-8">
+                  <div className="inline-block w-8 h-8 border-3 border-navy-300 border-t-neon-green rounded-full animate-spin"></div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">Loading...</p>
+                </div>
+              ) : pages.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-                  No articles yet
+                  No articles yet. Publish your first article!
                 </p>
               ) : (
                 <div className="space-y-3">

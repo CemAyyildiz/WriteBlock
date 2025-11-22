@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Navbar from '@/components/Navbar';
-import { getPageBySlug } from '@/lib/mockData';
+import { getBlockchainClient, getStorageClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
 
 export default function PostPage() {
@@ -14,18 +14,131 @@ export default function PostPage() {
   const slug = params.slug as string;
   
   const [page, setPage] = useState<PageMetadata | null>(null);
+  const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const pageData = getPageBySlug(slug);
-    
-    if (!pageData) {
-      setLoading(false);
-      return;
-    }
+    const fetchPageContent = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    setPage(pageData);
-    setLoading(false);
+        const blockchainClient = getBlockchainClient();
+        const storageClient = getStorageClient();
+        const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+
+        if (!registryId) {
+          throw new Error('Registry ID not configured');
+        }
+
+        // Get all page IDs from registry
+        const pageIds = await blockchainClient.getAllPages(registryId);
+        
+        // Try to find page by slug - search through all pages
+        let foundPage: { metadata: any; content: string; blobData: any } | null = null;
+        
+        // First, try to match by page-{id} format for backward compatibility
+        const pageIdMatch = slug.match(/page-(\d+)/);
+        if (pageIdMatch) {
+          const pageId = parseInt(pageIdMatch[1]);
+          if (pageId < pageIds.length) {
+            const pageObjectId = pageIds[pageId];
+            const metadata = await blockchainClient.getPageMetadata(pageObjectId);
+            const blobContent = await storageClient.download(metadata.walrusBlobId);
+            
+            // Try to parse as JSON (new format) or use as markdown (old format)
+            let blobData: any;
+            let markdownContent: string;
+            try {
+              blobData = JSON.parse(blobContent);
+              markdownContent = blobData.content || blobContent;
+            } catch {
+              // Old format - just markdown
+              blobData = { slug: `page-${pageId}`, title: `Article #${pageId}`, excerpt: '', content: blobContent };
+              markdownContent = blobContent;
+            }
+            
+            foundPage = { metadata, content: markdownContent, blobData };
+          }
+        } else {
+          // Search by slug - iterate through all pages
+          for (let i = 0; i < pageIds.length; i++) {
+            try {
+              const pageObjectId = pageIds[i];
+              const metadata = await blockchainClient.getPageMetadata(pageObjectId);
+              const blobContent = await storageClient.download(metadata.walrusBlobId);
+              
+              // Try to parse as JSON (new format) or use as markdown (old format)
+              let blobData: any;
+              try {
+                blobData = JSON.parse(blobContent);
+                if (blobData.slug === slug) {
+                  foundPage = { 
+                    metadata, 
+                    content: blobData.content || blobContent, 
+                    blobData 
+                  };
+                  break;
+                }
+              } catch {
+                // Old format - skip (no slug match)
+                continue;
+              }
+            } catch (err: any) {
+              // 404 hatası ise blob henüz replicate olmamış olabilir, skip et
+              if (err?.message?.includes('404') || err?.message?.includes('not found')) {
+                console.warn(`⚠️ Blob not yet replicated for page ${i}, skipping...`);
+              } else {
+                console.warn(`Failed to check page ${i}:`, err);
+              }
+              continue;
+            }
+          }
+        }
+
+        if (!foundPage) {
+          setError('Page not found');
+          setLoading(false);
+          return;
+        }
+
+        const { metadata, content: markdownContent, blobData } = foundPage;
+
+        // Extract title and excerpt from blobData (new format) or markdown (old format)
+        const title = blobData.title || (() => {
+          const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+          return titleMatch ? titleMatch[1] : `Article #${metadata.pageId}`;
+        })();
+
+        const excerpt = blobData.excerpt || (() => {
+          const contentWithoutTitle = markdownContent.replace(/^#\s+.+$/m, '').trim();
+          const firstParagraph = contentWithoutTitle.split('\n\n')[0];
+          return firstParagraph.substring(0, 200) + (firstParagraph.length > 200 ? '...' : '');
+        })();
+
+        setPage({
+          page_id: metadata.pageId,
+          walrus_blob_id: metadata.walrusBlobId,
+          version: metadata.version,
+          author: metadata.author,
+          created_at: metadata.createdAt,
+          updated_at: metadata.updatedAt,
+          slug: blobData.slug || `page-${metadata.pageId}`,
+          title,
+          excerpt,
+        });
+
+        setContent(markdownContent);
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Error fetching page:', err);
+        setError(err.message || 'Failed to load article');
+        setLoading(false);
+      }
+    };
+
+    fetchPageContent();
   }, [slug]);
 
   const formatAddress = (address: string) => {
@@ -46,23 +159,25 @@ export default function PostPage() {
         <Navbar />
         <div className="max-w-5xl mx-auto px-6 py-24 text-center">
           <div className="inline-block w-16 h-16 border-4 border-navy-600 border-t-neon-green rounded-full animate-spin"></div>
-          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 font-medium">Loading article...</p>
+          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 font-medium">
+            Loading article from blockchain and Walrus...
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!page) {
+  if (error || !page) {
     return (
       <div className="min-h-screen bg-off-white dark:bg-navy-950">
         <Navbar />
         <div className="max-w-5xl mx-auto px-6 py-24 text-center">
           <div className="text-8xl mb-8 opacity-50">😕</div>
           <h1 className="text-4xl font-bold text-navy-800 dark:text-navy-200 mb-4">
-            Article Not Found
+            {error ? 'Failed to Load Article' : 'Article Not Found'}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-10 max-w-md mx-auto">
-            The article you're looking for doesn't exist or has been removed.
+            {error || "The article you're looking for doesn't exist or has been removed."}
           </p>
           <button
             onClick={() => router.push('/')}
@@ -117,7 +232,7 @@ export default function PostPage() {
           <div className="p-12 lg:p-16">
             <div className="markdown-content">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {page.markdown_content || ''}
+                {content}
               </ReactMarkdown>
             </div>
           </div>
