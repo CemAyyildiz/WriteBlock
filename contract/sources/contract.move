@@ -22,6 +22,14 @@ const EPageNotFound: u64 = 2;
 #[allow(unused_const)]
 const EInvalidBlobId: u64 = 3;
 
+/// Error: Edit request not found
+#[allow(unused_const)]
+const EEditRequestNotFound: u64 = 4;
+
+/// Error: Edit request already processed
+#[allow(unused_const)]
+const EEditRequestAlreadyProcessed: u64 = 5;
+
 // ==================== Structs ====================
 
 /// Global registry for the CMS system
@@ -72,6 +80,28 @@ public struct Page_Metadata has key {
     created_at: u64,
     /// Whether the page is deleted (soft delete)
     deleted: bool,
+    /// Edit requests for this page (request_id -> Edit_Request)
+    edit_requests: Table<u64, Edit_Request>,
+    /// Next edit request ID
+    next_request_id: u64,
+}
+
+/// Edit request from a reader
+public struct Edit_Request has store {
+    /// Unique request identifier
+    request_id: u64,
+    /// Page ID this request is for
+    page_id: u64,
+    /// Address of the requester
+    requester: address,
+    /// New Walrus BLOB ID with edited content
+    new_walrus_blob_id: String,
+    /// Status: 0 = pending, 1 = approved, 2 = rejected
+    status: u8,
+    /// Timestamp when request was created
+    created_at: u64,
+    /// Timestamp when request was processed (approved/rejected)
+    processed_at: u64,
 }
 
 // ==================== Events ====================
@@ -171,6 +201,8 @@ public entry fun create_page(
         updated_at: timestamp,
         created_at: timestamp,
         deleted: false,
+        edit_requests: table::new(ctx),
+        next_request_id: 0,
     };
     
     let page_metadata_address = object::uid_to_address(&page_metadata.id);
@@ -222,6 +254,101 @@ public entry fun delete_page(
     page.updated_at = tx_context::epoch_timestamp_ms(ctx);
 }
 
+// ==================== Reader Functions ====================
+
+/// Create an edit request for a page
+/// Anyone can create an edit request
+#[allow(lint(public_entry))]
+public entry fun create_edit_request(
+    page: &mut Page_Metadata,
+    new_walrus_blob_id: String,
+    ctx: &mut TxContext
+) {
+    // Check if page is deleted
+    assert!(!page.deleted, EPageNotFound);
+    
+    // Check if requester is not the author (authors should use update_page_content directly)
+    assert!(page.author != tx_context::sender(ctx), ENotAuthorized);
+    
+    let request_id = page.next_request_id;
+    let timestamp = tx_context::epoch_timestamp_ms(ctx);
+    
+    let edit_request = Edit_Request {
+        request_id,
+        page_id: page.page_id,
+        requester: tx_context::sender(ctx),
+        new_walrus_blob_id,
+        status: 0, // pending
+        created_at: timestamp,
+        processed_at: 0,
+    };
+    
+    // Add request to page
+    table::add(&mut page.edit_requests, request_id, edit_request);
+    page.next_request_id = page.next_request_id + 1;
+}
+
+// ==================== Author Functions (Edit Requests) ====================
+
+/// Approve an edit request and update page content
+/// Only callable by the page author
+#[allow(lint(public_entry))]
+public entry fun approve_edit_request(
+    _author_cap: &Author_Capability,
+    page: &mut Page_Metadata,
+    request_id: u64,
+    ctx: &mut TxContext
+) {
+    // Check if page is deleted
+    assert!(!page.deleted, EPageNotFound);
+    
+    // Check if caller is the author
+    assert!(page.author == tx_context::sender(ctx), ENotAuthorized);
+    
+    // Get the edit request
+    assert!(table::contains(&page.edit_requests, request_id), EEditRequestNotFound);
+    let edit_request = table::borrow_mut(&mut page.edit_requests, request_id);
+    
+    // Check if request is still pending
+    assert!(edit_request.status == 0, EEditRequestAlreadyProcessed);
+    
+    // Update page content with the new BLOB ID
+    page.walrus_blob_id = edit_request.new_walrus_blob_id;
+    page.version = page.version + 1;
+    page.updated_at = tx_context::epoch_timestamp_ms(ctx);
+    
+    // Mark request as approved
+    edit_request.status = 1; // approved
+    edit_request.processed_at = tx_context::epoch_timestamp_ms(ctx);
+}
+
+/// Reject an edit request
+/// Only callable by the page author
+#[allow(lint(public_entry))]
+public entry fun reject_edit_request(
+    _author_cap: &Author_Capability,
+    page: &mut Page_Metadata,
+    request_id: u64,
+    ctx: &mut TxContext
+) {
+    // Check if page is deleted
+    assert!(!page.deleted, EPageNotFound);
+    
+    // Check if caller is the author
+    assert!(page.author == tx_context::sender(ctx), ENotAuthorized);
+    
+    // Get the edit request
+    assert!(table::contains(&page.edit_requests, request_id), EEditRequestNotFound);
+    let edit_request = table::borrow_mut(&mut page.edit_requests, request_id);
+    
+    // Check if request is still pending
+    assert!(edit_request.status == 0, EEditRequestAlreadyProcessed);
+    
+    // Mark request as rejected
+    edit_request.status = 2; // rejected
+    edit_request.processed_at = tx_context::epoch_timestamp_ms(ctx);
+}
+
 // ==================== View Functions ====================
 
 /// Get page information
@@ -260,6 +387,24 @@ public fun get_page_id(page: &Page_Metadata): u64 {
 /// Get the author of a page
 public fun get_author(page: &Page_Metadata): address {
     page.author
+}
+
+/// Get edit request information
+public fun get_edit_request_info(request: &Edit_Request): (u64, u64, address, String, u8, u64, u64) {
+    (
+        request.request_id,
+        request.page_id,
+        request.requester,
+        request.new_walrus_blob_id,
+        request.status,
+        request.created_at,
+        request.processed_at
+    )
+}
+
+/// Get the next request ID for a page
+public fun get_next_request_id(page: &Page_Metadata): u64 {
+    page.next_request_id
 }
 
 // ==================== Test-Only Functions ====================

@@ -8,10 +8,12 @@ import {
   TransactionResult,
   PageMetadata,
   RegistryStats,
+  EditRequest,
 } from '../interfaces/blockchain.interface';
 
 export class MockBlockchainClient implements IBlockchainClient {
   private pages = new Map<string, PageMetadata>();
+  private editRequests = new Map<string, EditRequest[]>(); // pageId -> EditRequest[]
   private registry: RegistryStats = {
     totalPages: 0,
     createdAt: Date.now(),
@@ -137,6 +139,136 @@ export class MockBlockchainClient implements IBlockchainClient {
   async getAllPages(registryId: string): Promise<string[]> {
     await this.delay(300);
     return Array.from(this.pages.keys());
+  }
+
+  async createEditRequest(
+    pageId: string,
+    newWalrusBlobId: string
+  ): Promise<TransactionResult> {
+    await this.delay(1500);
+
+    const page = this.pages.get(pageId);
+    if (!page || page.deleted) {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Page not found',
+      };
+    }
+
+    const requests = this.editRequests.get(pageId) || [];
+    const requestId = requests.length;
+    
+    const request: EditRequest = {
+      requestId,
+      pageId: page.pageId,
+      requester: '0xmock_requester_address',
+      newWalrusBlobId,
+      status: 'pending',
+      createdAt: Date.now(),
+      processedAt: 0,
+    };
+
+    requests.push(request);
+    this.editRequests.set(pageId, requests);
+
+    const txHash = this.generateTxHash();
+    console.log(`[Mock Blockchain] Created edit request: ${requestId} for page ${pageId}, TX: ${txHash}`);
+
+    return {
+      success: true,
+      txHash,
+    };
+  }
+
+  async approveEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult> {
+    await this.delay(1500);
+
+    const page = this.pages.get(pageId);
+    if (!page || page.deleted) {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Page not found',
+      };
+    }
+
+    const requests = this.editRequests.get(pageId) || [];
+    const request = requests.find(r => r.requestId === requestId);
+    
+    if (!request || request.status !== 'pending') {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Edit request not found or already processed',
+      };
+    }
+
+    // Update page content
+    page.walrusBlobId = request.newWalrusBlobId;
+    page.version++;
+    page.updatedAt = Date.now();
+
+    // Mark request as approved
+    request.status = 'approved';
+    request.processedAt = Date.now();
+
+    const txHash = this.generateTxHash();
+    console.log(`[Mock Blockchain] Approved edit request: ${requestId} for page ${pageId}, TX: ${txHash}`);
+
+    return {
+      success: true,
+      txHash,
+    };
+  }
+
+  async rejectEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult> {
+    await this.delay(1500);
+
+    const page = this.pages.get(pageId);
+    if (!page || page.deleted) {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Page not found',
+      };
+    }
+
+    const requests = this.editRequests.get(pageId) || [];
+    const request = requests.find(r => r.requestId === requestId);
+    
+    if (!request || request.status !== 'pending') {
+      return {
+        success: false,
+        txHash: '',
+        error: 'Edit request not found or already processed',
+      };
+    }
+
+    // Mark request as rejected
+    request.status = 'rejected';
+    request.processedAt = Date.now();
+
+    const txHash = this.generateTxHash();
+    console.log(`[Mock Blockchain] Rejected edit request: ${requestId} for page ${pageId}, TX: ${txHash}`);
+
+    return {
+      success: true,
+      txHash,
+    };
+  }
+
+  async getEditRequests(pageId: string): Promise<EditRequest[]> {
+    await this.delay(300);
+    return this.editRequests.get(pageId) || [];
   }
 
   private generateTxHash(): string {

@@ -39,3 +39,18 @@ export interface UserSession {
   hasAuthorCap?: boolean;
   name?: string;
 }
+
+export interface EditRequest {
+  requestId: number;
+  pageId: number;
+  requester: string;
+  newWalrusBlobId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  processedAt: number;
+  // Frontend-specific fields
+  title?: string;
+  slug?: string;
+  excerpt?: string;
+  content?: string;
+}

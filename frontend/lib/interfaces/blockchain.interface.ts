@@ -72,6 +72,60 @@ export interface IBlockchainClient {
    * @returns Array of page object IDs
    */
   getAllPages(registryId: string): Promise<string[]>;
+
+  /**
+   * Create an edit request for a page
+   * @param pageId - Page metadata object ID
+   * @param newWalrusBlobId - New content BLOB ID
+   * @returns Transaction result
+   */
+  createEditRequest(
+    pageId: string,
+    newWalrusBlobId: string
+  ): Promise<TransactionResult>;
+
+  /**
+   * Approve an edit request and update page content
+   * @param authorCapId - Author capability object ID
+   * @param pageId - Page metadata object ID
+   * @param requestId - Edit request ID
+   * @returns Transaction result
+   */
+  approveEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult>;
+
+  /**
+   * Reject an edit request
+   * @param authorCapId - Author capability object ID
+   * @param pageId - Page metadata object ID
+   * @param requestId - Edit request ID
+   * @returns Transaction result
+   */
+  rejectEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult>;
+
+  /**
+   * Get all edit requests for a page
+   * @param pageId - Page metadata object ID
+   * @returns Array of edit requests
+   */
+  getEditRequests(pageId: string): Promise<EditRequest[]>;
+}
+
+export interface EditRequest {
+  requestId: number;
+  pageId: number;
+  requester: string;
+  newWalrusBlobId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  processedAt: number;
 }
 
 export interface TransactionResult {

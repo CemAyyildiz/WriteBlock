@@ -1,12 +1,17 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import dynamic from 'next/dynamic';
+import 'easymde/dist/easymde.min.css';
 import Navbar from '@/components/Navbar';
-import { getBlockchainClient, getStorageClient } from '@/lib/client';
+import { getBlockchainClient, getStorageClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
 import { PageMetadata } from '@/types';
+import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+
+const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 
 export default function PostPage() {
   const params = useParams();
@@ -17,6 +22,38 @@ export default function PostPage() {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Edit request states
+  const [showEditRequestModal, setShowEditRequestModal] = useState(false);
+  const [editRequestContent, setEditRequestContent] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  
+  // Sui wallet integration
+  const currentAccount = useCurrentAccount();
+  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const config = getProviderConfig();
+  
+  // Initialize wallet for edit requests
+  useEffect(() => {
+    if (config.wallet === 'sui' && currentAccount) {
+      initializeSuiWallet({
+        account: currentAccount,
+        connect: async () => {},
+        disconnect: async () => {},
+        signAndExecute: async (tx) => {
+          return new Promise((resolve, reject) => {
+            signAndExecuteTransaction(
+              { transaction: tx },
+              {
+                onSuccess: (result) => resolve({ digest: result.digest }),
+                onError: (error) => reject(error),
+              }
+            );
+          });
+        },
+      });
+    }
+  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
 
   useEffect(() => {
     const fetchPageContent = async () => {
@@ -172,6 +209,115 @@ export default function PostPage() {
     });
   };
 
+  const handleOpenEditRequest = () => {
+    if (!currentAccount && config.wallet === 'sui') {
+      alert('Please connect your wallet first to suggest edits');
+      return;
+    }
+    setEditRequestContent(content); // Pre-fill with current content
+    setShowEditRequestModal(true);
+  };
+
+  const handleSubmitEditRequest = async () => {
+    if (!page || !editRequestContent.trim()) {
+      alert('Please provide edited content');
+      return;
+    }
+
+    if (config.wallet === 'sui' && !currentAccount) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      const storageClient = getStorageClient();
+      
+      // Get page object ID from registry
+      const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      if (!registryId) {
+        throw new Error('Registry ID not configured');
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(registryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pageId of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pageId);
+        if (metadata.pageId === page.page_id) {
+          pageObjectId = pageId;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        throw new Error('Page object ID not found');
+      }
+
+      // Create JSON blob with edited content (preserve title, slug, excerpt from original)
+      const blobData = {
+        slug: page.slug || `page-${page.page_id}`,
+        title: page.title || `Article #${page.page_id}`,
+        excerpt: page.excerpt || '',
+        content: editRequestContent,
+      };
+      
+      // Upload edited content to Walrus
+      const newWalrusBlobId = await storageClient.upload(JSON.stringify(blobData));
+      console.log('✅ Edit request content uploaded:', newWalrusBlobId);
+      
+      // Create edit request on blockchain
+      const txResult = await blockchainClient.createEditRequest(
+        pageObjectId,
+        newWalrusBlobId
+      );
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Failed to create edit request');
+      }
+      
+      console.log('✅ Edit request created:', txResult.txHash);
+      
+      alert('✅ Edit request submitted successfully! The author will review it.');
+      setShowEditRequestModal(false);
+      setEditRequestContent('');
+    } catch (error) {
+      console.error('Error submitting edit request:', error);
+      alert('Failed to submit edit request: ' + (error as Error).message);
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
+  const editorOptions = useMemo(() => {
+    return {
+      spellChecker: false,
+      placeholder: 'Edit the content...',
+      status: ['lines', 'words', 'cursor'] as any,
+      autofocus: true,
+      toolbar: [
+        'bold',
+        'italic',
+        'heading',
+        '|',
+        'quote',
+        'unordered-list',
+        'ordered-list',
+        '|',
+        'link',
+        'image',
+        '|',
+        'preview',
+        'side-by-side',
+        'fullscreen',
+        '|',
+        'guide',
+      ] as any,
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-off-white dark:bg-navy-950">
@@ -257,6 +403,29 @@ export default function PostPage() {
           </div>
         </article>
 
+        {/* Suggest Edit Button */}
+        {page && (
+          (() => {
+            // Show button if:
+            // 1. In mock mode (no wallet required)
+            // 2. Wallet connected and user is not the author
+            const isAuthor = currentAccount && page.author.toLowerCase() === currentAccount.address.toLowerCase();
+            const shouldShow = config.wallet === 'mock' || (currentAccount && !isAuthor);
+            
+            return shouldShow ? (
+              <div className="mb-12 text-center">
+                <button
+                  onClick={handleOpenEditRequest}
+                  className="modern-button inline-flex items-center gap-2"
+                >
+                  <span>✏️</span>
+                  <span>Suggest Edit</span>
+                </button>
+              </div>
+            ) : null;
+          })()
+        )}
+
         {/* Provenance Footer - Blockchain Info */}
         <div className="glass-card p-8 mb-12">
           <div className="flex items-center gap-4 mb-6">
@@ -335,6 +504,58 @@ export default function PostPage() {
           </button>
         </div>
       </div>
+
+      {/* Edit Request Modal */}
+      {showEditRequestModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="glass-card p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+              Suggest Edit
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Edit the content below. The author will review your changes before publishing.
+            </p>
+            
+            <div className="mb-6">
+              <SimpleMDE
+                value={editRequestContent}
+                onChange={setEditRequestContent}
+                options={editorOptions}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setShowEditRequestModal(false);
+                  setEditRequestContent('');
+                }}
+                disabled={isSubmittingRequest}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-navy-800 hover:bg-gray-200 dark:hover:bg-navy-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitEditRequest}
+                disabled={isSubmittingRequest || !editRequestContent.trim()}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-neon-green hover:bg-neon-green/90 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSubmittingRequest ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✏️</span>
+                    <span>Submit Edit Request</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

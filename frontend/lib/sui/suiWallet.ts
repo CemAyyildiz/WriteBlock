@@ -112,11 +112,18 @@ export class SuiWalletClient implements IWalletClient {
         },
       });
 
-      // Check for Admin and Author capabilities
+      // Get current package ID from environment
+      const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+      const expectedPackagePrefix = packageId ? `${packageId}::contract::` : '::contract::';
+
+      // Check for Admin and Author capabilities (only from current package)
       for (const obj of ownedObjects.data) {
         if (!obj.data || !obj.data.type) continue;
 
         const type = obj.data.type;
+
+        // Only check capabilities from the current package
+        if (!type.startsWith(expectedPackagePrefix)) continue;
 
         // Check for Admin_Capability
         if (type.includes('::contract::Admin_Capability')) {

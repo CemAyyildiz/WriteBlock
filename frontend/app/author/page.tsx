@@ -32,6 +32,11 @@ export default function AuthorPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmPage, setDeleteConfirmPage] = useState<PageMetadata | null>(null);
+  
+  // Edit Requests states
+  const [editRequests, setEditRequests] = useState<Map<number, any[]>>(new Map()); // pageId -> EditRequest[]
+  const [loadingRequests, setLoadingRequests] = useState<Set<number>>(new Set()); // pageIds being loaded
+  const [processingRequest, setProcessingRequest] = useState<{ pageId: number; requestId: number } | null>(null);
 
   // Sui wallet integration
   const currentAccount = useCurrentAccount();
@@ -117,6 +122,7 @@ export default function AuthorPage() {
             let title = `Article #${metadata.pageId}`;
             let excerpt = 'Click to view content';
             let slug = `page-${metadata.pageId}`;
+            let markdownContent = '';
             
             try {
               const storageClient = getStorageClient();
@@ -127,6 +133,7 @@ export default function AuthorPage() {
                 title = blobData.title || title;
                 excerpt = blobData.excerpt || excerpt;
                 slug = blobData.slug || slug;
+                markdownContent = blobData.content || blobContent; // Store content for editing
               } catch {
                 // Old format - extract from markdown
                 const titleMatch = blobContent.match(/^#\s+(.+)$/m);
@@ -136,12 +143,14 @@ export default function AuthorPage() {
                 const contentWithoutTitle = blobContent.replace(/^#\s+.+$/m, '').trim();
                 const firstParagraph = contentWithoutTitle.split('\n\n')[0];
                 excerpt = firstParagraph ? (firstParagraph.substring(0, 150) + (firstParagraph.length > 150 ? '...' : '')) : excerpt;
+                markdownContent = blobContent; // Store content for editing
               }
             } catch (err) {
               console.warn(`Failed to fetch content for page ${metadata.pageId}:`, err);
+              // Continue with default values - content will be empty but page can still be edited
             }
             
-            userPages.push({
+            const pageData: PageMetadata = {
               page_id: metadata.pageId,
               walrus_blob_id: metadata.walrusBlobId,
               version: metadata.version,
@@ -151,7 +160,24 @@ export default function AuthorPage() {
               slug,
               title,
               excerpt,
-            });
+              markdown_content: markdownContent, // Cache content for editing
+            };
+            
+            userPages.push(pageData);
+            
+            // Fetch edit requests for this page
+            try {
+              const requests = await blockchainClient.getEditRequests(pageId);
+              if (requests.length > 0) {
+                setEditRequests(prev => {
+                  const newMap = new Map(prev);
+                  newMap.set(metadata.pageId, requests);
+                  return newMap;
+                });
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch edit requests for page ${metadata.pageId}:`, err);
+            }
           }
         } catch (err) {
           console.warn(`Failed to fetch page ${pageId}:`, err);
@@ -166,6 +192,182 @@ export default function AuthorPage() {
       console.error('Error fetching user pages:', error);
     } finally {
       setLoadingPages(false);
+    }
+  };
+
+  const fetchEditRequests = async (pageId: number) => {
+    try {
+      setLoadingRequests(prev => new Set(prev).add(pageId));
+      const blockchainClient = getBlockchainClient();
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      
+      if (!envRegistryId) {
+        return;
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pid of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pid);
+        if (metadata.pageId === pageId) {
+          pageObjectId = pid;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        return;
+      }
+      
+      const requests = await blockchainClient.getEditRequests(pageObjectId);
+      
+      // Fetch content for each request to display preview
+      const storageClient = getStorageClient();
+      const requestsWithContent = await Promise.all(
+        requests.map(async (req) => {
+          try {
+            const blobContent = await storageClient.download(req.newWalrusBlobId);
+            const blobData = JSON.parse(blobContent);
+            return {
+              ...req,
+              title: blobData.title,
+              slug: blobData.slug,
+              excerpt: blobData.excerpt,
+              content: blobData.content,
+            };
+          } catch {
+            return req;
+          }
+        })
+      );
+      
+      setEditRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(pageId, requestsWithContent);
+        return newMap;
+      });
+    } catch (error) {
+      console.error('Error fetching edit requests:', error);
+    } finally {
+      setLoadingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pageId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleApproveRequest = async (pageId: number, requestId: number) => {
+    if (!authorCapId) {
+      alert('Author capability not found');
+      return;
+    }
+
+    setProcessingRequest({ pageId, requestId });
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      
+      if (!envRegistryId) {
+        throw new Error('Registry ID not configured');
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pid of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pid);
+        if (metadata.pageId === pageId) {
+          pageObjectId = pid;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        throw new Error('Page object ID not found');
+      }
+
+      const txResult = await blockchainClient.approveEditRequest(
+        authorCapId,
+        pageObjectId,
+        requestId
+      );
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Failed to approve edit request');
+      }
+      
+      console.log('✅ Edit request approved:', txResult.txHash);
+      
+      // Refresh pages and requests
+      if (currentAccount) {
+        await fetchUserPages(currentAccount.address);
+        await fetchEditRequests(pageId);
+      }
+      
+      alert('✅ Edit request approved! Page content has been updated.');
+    } catch (error) {
+      console.error('Error approving edit request:', error);
+      alert('Failed to approve edit request: ' + (error as Error).message);
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
+  const handleRejectRequest = async (pageId: number, requestId: number) => {
+    if (!authorCapId) {
+      alert('Author capability not found');
+      return;
+    }
+
+    setProcessingRequest({ pageId, requestId });
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+      
+      if (!envRegistryId) {
+        throw new Error('Registry ID not configured');
+      }
+      
+      const pageIds = await blockchainClient.getAllPages(envRegistryId);
+      let pageObjectId: string | null = null;
+      
+      for (const pid of pageIds) {
+        const metadata = await blockchainClient.getPageMetadata(pid);
+        if (metadata.pageId === pageId) {
+          pageObjectId = pid;
+          break;
+        }
+      }
+      
+      if (!pageObjectId) {
+        throw new Error('Page object ID not found');
+      }
+
+      const txResult = await blockchainClient.rejectEditRequest(
+        authorCapId,
+        pageObjectId,
+        requestId
+      );
+      
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Failed to reject edit request');
+      }
+      
+      console.log('✅ Edit request rejected:', txResult.txHash);
+      
+      // Refresh requests
+      await fetchEditRequests(pageId);
+      
+      alert('✅ Edit request rejected.');
+    } catch (error) {
+      console.error('Error rejecting edit request:', error);
+      alert('Failed to reject edit request: ' + (error as Error).message);
+    } finally {
+      setProcessingRequest(null);
     }
   };
 
@@ -249,6 +451,11 @@ export default function AuthorPage() {
           try {
             const metadata = await blockchainClient.getPageMetadata(pageId);
             
+            // Skip current page if editing (allow same slug for current page)
+            if (editingPage && metadata.pageId === editingPage.page_id) {
+              continue;
+            }
+            
             // Skip deleted pages - deleted slugs can be reused
             if (metadata.deleted) {
               continue;
@@ -282,7 +489,7 @@ export default function AuthorPage() {
     // Debounce: wait 500ms after user stops typing
     const timeoutId = setTimeout(checkSlug, 500);
     return () => clearTimeout(timeoutId);
-  }, [slug]);
+  }, [slug, editingPage]); // Re-run when editingPage changes
 
   const handlePublish = async () => {
     if (!title.trim()) {
@@ -426,34 +633,83 @@ export default function AuthorPage() {
 
   const handleEdit = async (page: PageMetadata) => {
     try {
-      // Fetch content from Walrus
-      const storageClient = getStorageClient();
-      const blobContent = await storageClient.download(page.walrus_blob_id);
+      console.log('📝 Starting to edit page:', page);
       
-      let blobData: any;
-      try {
-        blobData = JSON.parse(blobContent);
-        setTitle(blobData.title || '');
-        setSlug(blobData.slug || `page-${page.page_id}`);
-        setExcerpt(blobData.excerpt || '');
-        setContent(blobData.content || '');
-      } catch {
-        // Old format - just markdown
-        setTitle(page.title || '');
+      // First, try to use cached content if available
+      if (page.markdown_content) {
+        console.log('📄 Using cached content from page metadata');
+        setTitle(page.title || `Article #${page.page_id}`);
         setSlug(page.slug || `page-${page.page_id}`);
         setExcerpt(page.excerpt || '');
-        setContent(blobContent);
+        setContent(page.markdown_content);
+        
+        setEditingPage(page);
+        setSaveSuccess(false);
+        setTxInfo(null);
+        
+        // Scroll to editor
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+        return;
+      }
+      
+      // If no cached content, try to fetch from Walrus
+      const storageClient = getStorageClient();
+      let blobContent: string | null = null;
+      
+      try {
+        console.log('📥 Downloading content from Walrus:', page.walrus_blob_id);
+        blobContent = await storageClient.download(page.walrus_blob_id);
+        console.log('✅ Content downloaded, length:', blobContent.length);
+      } catch (walrusError) {
+        console.warn('⚠️ Could not download from Walrus:', walrusError);
+        // Continue with cached metadata if available
+      }
+      
+      // If we have content from Walrus, parse it
+      if (blobContent) {
+        let blobData: any;
+        try {
+          blobData = JSON.parse(blobContent);
+          console.log('📄 Parsed JSON blob data:', { title: blobData.title, slug: blobData.slug });
+          setTitle(blobData.title || page.title || '');
+          setSlug(blobData.slug || page.slug || `page-${page.page_id}`);
+          setExcerpt(blobData.excerpt || page.excerpt || '');
+          setContent(blobData.content || '');
+        } catch {
+          // Old format - just markdown
+          console.log('📄 Using old format (markdown only)');
+          setTitle(page.title || '');
+          setSlug(page.slug || `page-${page.page_id}`);
+          setExcerpt(page.excerpt || '');
+          setContent(blobContent);
+        }
+      } else {
+        // Fallback: Use cached metadata from page object
+        console.log('📄 Using cached metadata (Walrus unavailable)');
+        setTitle(page.title || `Article #${page.page_id}`);
+        setSlug(page.slug || `page-${page.page_id}`);
+        setExcerpt(page.excerpt || '');
+        setContent(''); // Empty content - user can write new content
+        
+        // Show warning to user
+        console.warn('⚠️ Walrus içeriği indirilemedi. İçeriği manuel olarak yazabilirsiniz.');
       }
       
       setEditingPage(page);
       setSaveSuccess(false);
       setTxInfo(null);
       
+      console.log('✅ Edit mode activated, scrolling to editor');
+      
       // Scroll to editor
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
     } catch (error) {
-      console.error('Error loading page for edit:', error);
-      alert('Failed to load page content: ' + (error as Error).message);
+      console.error('❌ Error loading page for edit:', error);
+      alert('Failed to load page for edit: ' + (error as Error).message);
     }
   };
 
@@ -466,6 +722,12 @@ export default function AuthorPage() {
     }
     if (!slug.trim()) {
       alert('Please enter a slug');
+      return;
+    }
+    
+    // Check if slug has validation error
+    if (slugError) {
+      alert(`⚠️ Slug hatası: ${slugError}\n\nLütfen slug'ı düzeltin.`);
       return;
     }
     
@@ -696,6 +958,10 @@ export default function AuthorPage() {
     });
   };
 
+  const formatAddress = (address: string) => {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
   return (
     <div className="min-h-screen bg-off-white dark:bg-navy-950">
       <Navbar />
@@ -714,6 +980,98 @@ export default function AuthorPage() {
             Create and publish decentralized articles
           </p>
         </div>
+
+        {/* Edit Requests Section */}
+        {pages.length > 0 && (() => {
+          const allRequests: Array<{ page: PageMetadata; requests: any[] }> = [];
+          pages.forEach(page => {
+            const requests = editRequests.get(page.page_id) || [];
+            const pendingRequests = requests.filter(r => r.status === 'pending');
+            if (pendingRequests.length > 0) {
+              allRequests.push({ page, requests: pendingRequests });
+            }
+          });
+          
+          return allRequests.length > 0 ? (
+            <div className="mb-8 glass-card p-6 border-2 border-neon-green/30">
+              <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
+                📝 Edit Requests ({allRequests.reduce((sum, item) => sum + item.requests.length, 0)})
+              </h2>
+              <div className="space-y-4">
+                {allRequests.map(({ page, requests }) => (
+                  <div key={page.page_id} className="p-4 rounded-xl bg-white dark:bg-navy-900 border border-neon-green/20">
+                    <h3 className="font-semibold text-navy-800 dark:text-navy-200 mb-3">
+                      {page.title} ({requests.length} request{requests.length > 1 ? 's' : ''})
+                    </h3>
+                    <div className="space-y-3">
+                      {requests.map((request) => (
+                        <div key={request.requestId} className="p-4 rounded-lg bg-navy-50 dark:bg-navy-800 border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                Request #{request.requestId} from {formatAddress(request.requester)}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-500">
+                                {formatDate(request.createdAt)}
+                              </div>
+                            </div>
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                              Pending
+                            </span>
+                          </div>
+                          
+                          {request.excerpt && (
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 line-clamp-2">
+                              {request.excerpt}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleApproveRequest(page.page_id, request.requestId)}
+                              disabled={processingRequest?.pageId === page.page_id && processingRequest?.requestId === request.requestId}
+                              className="px-3 py-1.5 text-sm font-medium text-white bg-neon-green hover:bg-neon-green/90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                              {processingRequest?.pageId === page.page_id && processingRequest?.requestId === request.requestId ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Processing...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>✅</span>
+                                  <span>Approve</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(page.page_id, request.requestId)}
+                              disabled={processingRequest?.pageId === page.page_id && processingRequest?.requestId === request.requestId}
+                              className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              ❌ Reject
+                            </button>
+                            <button
+                              onClick={() => {
+                                const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
+                                if (envRegistryId) {
+                                  fetchEditRequests(page.page_id);
+                                }
+                              }}
+                              className="px-3 py-1.5 text-sm font-medium text-navy-700 dark:text-navy-300 bg-navy-100 dark:bg-navy-800 hover:bg-navy-200 dark:hover:bg-navy-700 rounded-lg transition-colors"
+                            >
+                              👁️ View Content
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null;
+        })()}
 
         {/* My Articles Section */}
         {pages.length > 0 && (
@@ -863,10 +1221,10 @@ export default function AuthorPage() {
             <div className="glass-card overflow-hidden">
               <div className="border-b border-gray-200 dark:border-gray-700 p-6 bg-gradient-to-r from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
                 <h2 className="text-xl font-bold text-navy-800 dark:text-navy-200">
-                  Content Editor
+                  {editingPage ? '✏️ Edit Article' : 'Content Editor'}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Write in Markdown format
+                  {editingPage ? `Editing: ${editingPage.title || `Article #${editingPage.page_id}`}` : 'Write in Markdown format'}
                 </p>
               </div>
 

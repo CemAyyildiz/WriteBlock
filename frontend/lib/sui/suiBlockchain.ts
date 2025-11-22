@@ -11,6 +11,7 @@ import {
   TransactionResult,
   PageMetadata,
   RegistryStats,
+  EditRequest,
 } from '../interfaces/blockchain.interface';
 
 export class SuiBlockchainClient implements IBlockchainClient {
@@ -61,7 +62,20 @@ export class SuiBlockchainClient implements IBlockchainClient {
       const tx = new Transaction();
       
       // Debug log
-      console.log('📝 Creating page with:', { authorCapId, registryId, walrusBlobId });
+      console.log('📝 Creating page with:', { 
+        authorCapId, 
+        registryId, 
+        walrusBlobId,
+        packageId: this.packageId 
+      });
+      
+      // Validate IDs format
+      if (!authorCapId || !authorCapId.startsWith('0x') || authorCapId.length !== 66) {
+        throw new Error(`Invalid authorCapId format: ${authorCapId}`);
+      }
+      if (!registryId || !registryId.startsWith('0x') || registryId.length !== 66) {
+        throw new Error(`Invalid registryId format: ${registryId}`);
+      }
       
       tx.moveCall({
         target: `${this.packageId}::contract::create_page`,
@@ -192,11 +206,17 @@ export class SuiBlockchainClient implements IBlockchainClient {
 
       const tx = new Transaction();
       
+      // Sui addresses should be passed using tx.pure.address()
+      // Ensure address is in correct format (lowercase, with 0x prefix)
+      const normalizedAddress = recipientAddress.toLowerCase().startsWith('0x') 
+        ? recipientAddress.toLowerCase() 
+        : `0x${recipientAddress.toLowerCase()}`;
+      
       tx.moveCall({
         target: `${this.packageId}::contract::grant_author_capability`,
         arguments: [
           tx.object(adminCapId),
-          tx.pure.address(recipientAddress), // Use tx.pure.address() for Sui addresses
+          tx.pure.address(normalizedAddress),
         ],
       });
 
@@ -325,6 +345,199 @@ export class SuiBlockchainClient implements IBlockchainClient {
     } catch (error: any) {
       console.error('Error fetching all pages:', error);
       throw new Error(`Failed to fetch all pages: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create an edit request for a page
+   */
+  async createEditRequest(
+    pageId: string,
+    newWalrusBlobId: string
+  ): Promise<TransactionResult> {
+    try {
+      if (!this.walletSignAndExecute) {
+        throw new Error('Wallet not connected. Please connect your wallet first.');
+      }
+
+      if (!this.packageId) {
+        throw new Error('Package ID not configured. Set NEXT_PUBLIC_PACKAGE_ID in .env');
+      }
+
+      const tx = new Transaction();
+      
+      tx.moveCall({
+        target: `${this.packageId}::contract::create_edit_request`,
+        arguments: [
+          tx.object(pageId),
+          tx.pure(bcs.string().serialize(newWalrusBlobId).toBytes()),
+        ],
+      });
+
+      const result = await this.walletSignAndExecute(tx);
+      
+      return {
+        success: true,
+        txHash: result.digest,
+      };
+    } catch (error: any) {
+      console.error('Error creating edit request:', error);
+      return {
+        success: false,
+        txHash: '',
+        error: error.message || 'Failed to create edit request',
+      };
+    }
+  }
+
+  /**
+   * Approve an edit request and update page content
+   */
+  async approveEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult> {
+    try {
+      if (!this.walletSignAndExecute) {
+        throw new Error('Wallet not connected. Please connect your wallet first.');
+      }
+
+      if (!this.packageId) {
+        throw new Error('Package ID not configured. Set NEXT_PUBLIC_PACKAGE_ID in .env');
+      }
+
+      const tx = new Transaction();
+      
+      tx.moveCall({
+        target: `${this.packageId}::contract::approve_edit_request`,
+        arguments: [
+          tx.object(authorCapId),
+          tx.object(pageId),
+          tx.pure.u64(requestId),
+        ],
+      });
+
+      const result = await this.walletSignAndExecute(tx);
+      
+      return {
+        success: true,
+        txHash: result.digest,
+      };
+    } catch (error: any) {
+      console.error('Error approving edit request:', error);
+      return {
+        success: false,
+        txHash: '',
+        error: error.message || 'Failed to approve edit request',
+      };
+    }
+  }
+
+  /**
+   * Reject an edit request
+   */
+  async rejectEditRequest(
+    authorCapId: string,
+    pageId: string,
+    requestId: number
+  ): Promise<TransactionResult> {
+    try {
+      if (!this.walletSignAndExecute) {
+        throw new Error('Wallet not connected. Please connect your wallet first.');
+      }
+
+      if (!this.packageId) {
+        throw new Error('Package ID not configured. Set NEXT_PUBLIC_PACKAGE_ID in .env');
+      }
+
+      const tx = new Transaction();
+      
+      tx.moveCall({
+        target: `${this.packageId}::contract::reject_edit_request`,
+        arguments: [
+          tx.object(authorCapId),
+          tx.object(pageId),
+          tx.pure.u64(requestId),
+        ],
+      });
+
+      const result = await this.walletSignAndExecute(tx);
+      
+      return {
+        success: true,
+        txHash: result.digest,
+      };
+    } catch (error: any) {
+      console.error('Error rejecting edit request:', error);
+      return {
+        success: false,
+        txHash: '',
+        error: error.message || 'Failed to reject edit request',
+      };
+    }
+  }
+
+  /**
+   * Get all edit requests for a page
+   */
+  async getEditRequests(pageId: string): Promise<EditRequest[]> {
+    try {
+      const object = await this.client.getObject({
+        id: pageId,
+        options: { showContent: true },
+      });
+
+      if (!object.data || !object.data.content || object.data.content.dataType !== 'moveObject') {
+        throw new Error('Invalid page object');
+      }
+
+      const fields = object.data.content.fields as any;
+      const editRequestsTableId = fields.edit_requests?.fields?.id?.id;
+      const nextRequestId = Number(fields.next_request_id || 0);
+
+      if (!editRequestsTableId || nextRequestId === 0) {
+        return [];
+      }
+
+      const requests: EditRequest[] = [];
+
+      // Query all edit requests from the table
+      for (let i = 0; i < nextRequestId; i++) {
+        try {
+          const dynamicField = await this.client.getDynamicFieldObject({
+            parentId: editRequestsTableId,
+            name: {
+              type: 'u64',
+              value: i.toString(),
+            },
+          });
+
+          if (dynamicField.data?.content && dynamicField.data.content.dataType === 'moveObject') {
+            const requestFields = dynamicField.data.content.fields as any;
+            const statusNum = Number(requestFields.status || 0);
+            const status = statusNum === 0 ? 'pending' : statusNum === 1 ? 'approved' : 'rejected';
+
+            requests.push({
+              requestId: Number(requestFields.request_id),
+              pageId: Number(requestFields.page_id),
+              requester: requestFields.requester,
+              newWalrusBlobId: requestFields.new_walrus_blob_id,
+              status,
+              createdAt: Number(requestFields.created_at),
+              processedAt: Number(requestFields.processed_at || 0),
+            });
+          }
+        } catch (error) {
+          // Request might not exist, continue
+          continue;
+        }
+      }
+
+      return requests.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (error: any) {
+      console.error('Error fetching edit requests:', error);
+      throw new Error(`Failed to fetch edit requests: ${error.message}`);
     }
   }
 }

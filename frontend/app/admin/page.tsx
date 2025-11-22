@@ -44,14 +44,24 @@ export default function AdminPage() {
       // Fetch user capabilities
       const fetchCapabilities = async () => {
         try {
+          // First, try to use the Admin Cap ID from environment (new contract)
+          // This is the Admin_Capability created during contract deployment
+          const envAdminCapId = process.env.NEXT_PUBLIC_ADMIN_CAP_ID;
+          if (envAdminCapId) {
+            setAdminCapId(envAdminCapId);
+            console.log('✅ Using Admin Capability from .env.local:', envAdminCapId);
+            return;
+          }
+          
+          // Fallback: Query wallet for capabilities (for older contracts)
           const wallet = getWalletClient();
           const caps = await wallet.getUserCapabilities(currentAccount.address);
           
           if (caps.adminCapId) {
             setAdminCapId(caps.adminCapId);
-            console.log('✅ Admin capability found:', caps.adminCapId);
+            console.log('✅ Admin capability found from wallet:', caps.adminCapId);
           } else {
-            console.warn('⚠️ No admin capability found for this address');
+            console.warn('⚠️ No admin capability found. Make sure NEXT_PUBLIC_ADMIN_CAP_ID is set in .env.local');
           }
         } catch (error) {
           console.error('Error fetching capabilities:', error);
