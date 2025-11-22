@@ -24,6 +24,15 @@ export default function PostPage() {
         setLoading(true);
         setError(null);
 
+        // Reserved routes that cannot be used as article slugs
+        const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
+        if (reservedRoutes.includes(slug.toLowerCase())) {
+          setError('This route is reserved and cannot be used as an article slug');
+          setLoading(false);
+          router.push('/');
+          return;
+        }
+
         const blockchainClient = getBlockchainClient();
         const storageClient = getStorageClient();
         const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;

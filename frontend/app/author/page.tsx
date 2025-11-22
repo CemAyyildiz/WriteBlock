@@ -202,14 +202,30 @@ export default function AuthorPage() {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+    
+    // Check if auto-generated slug is a reserved route
+    const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
+    if (reservedRoutes.includes(autoSlug.toLowerCase())) {
+      setSlugError(`Bu slug rezerve edilmiş bir route: "${autoSlug}". Lütfen title'ı değiştirin.`);
+    } else {
+      setSlugError(null);
+    }
+    
     setSlug(autoSlug);
-    setSlugError(null); // Clear error when title changes
   };
 
   // Check slug uniqueness when slug changes (with debounce)
   useEffect(() => {
     if (!slug.trim() || slug.match(/^page-\d+$/)) {
       setSlugError(null);
+      return;
+    }
+
+    // Check if slug is a reserved route
+    const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
+    if (reservedRoutes.includes(slug.toLowerCase())) {
+      setSlugError(`Bu slug rezerve edilmiş bir route: "${slug}". Lütfen farklı bir slug kullanın.`);
+      setIsCheckingSlug(false);
       return;
     }
 
@@ -277,6 +293,14 @@ export default function AuthorPage() {
       alert('Please enter a slug');
       return;
     }
+    
+    // Check if slug is a reserved route
+    const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
+    if (reservedRoutes.includes(slug.toLowerCase())) {
+      alert(`⚠️ Bu slug rezerve edilmiş bir route: "${slug}". Lütfen farklı bir slug kullanın.`);
+      return;
+    }
+    
     if (!content.trim()) {
       alert('Please write some content');
       return;
@@ -444,6 +468,14 @@ export default function AuthorPage() {
       alert('Please enter a slug');
       return;
     }
+    
+    // Check if slug is a reserved route
+    const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
+    if (reservedRoutes.includes(slug.toLowerCase())) {
+      alert(`⚠️ Bu slug rezerve edilmiş bir route: "${slug}". Lütfen farklı bir slug kullanın.`);
+      return;
+    }
+    
     if (!content.trim()) {
       alert('Please write some content');
       return;
