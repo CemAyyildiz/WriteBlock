@@ -14,7 +14,20 @@ import { useToast } from '@/lib/hooks/useToast';
 import { getStorageClient } from '@/lib/client';
 import { AuthorRequest } from '@/types';
 
-const AUTHOR_REQUESTS_BLOB_ID = 'author_requests_registry'; // Central registry for all requests
+const AUTHOR_REQUESTS_STORAGE_KEY = 'writeblock_author_requests_blob_id';
+
+// Get the current registry blob ID from localStorage
+const getRegistryBlobId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(AUTHOR_REQUESTS_STORAGE_KEY);
+};
+
+// Save the registry blob ID to localStorage
+const saveRegistryBlobId = (blobId: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AUTHOR_REQUESTS_STORAGE_KEY, blobId);
+  console.log('📝 Registry blob ID saved:', blobId);
+};
 
 export default function BecomeAuthorPage() {
   const router = useRouter();
@@ -38,22 +51,26 @@ export default function BecomeAuthorPage() {
         const storageClient = getStorageClient();
         
         // Try to fetch the requests registry
-        try {
-          const registryContent = await storageClient.download(AUTHOR_REQUESTS_BLOB_ID);
-          const registry: AuthorRequest[] = JSON.parse(registryContent);
-          
-          // Find request for current user
-          const userRequest = registry.find(
-            req => req.requester.toLowerCase() === currentAccount.address.toLowerCase()
-          );
-          
-          if (userRequest) {
-            setExistingRequest(userRequest);
-          }
-        } catch (err: any) {
-          // Registry doesn't exist yet or error fetching - that's okay
-          if (!err?.message?.includes('404')) {
-            console.warn('Error fetching author requests registry:', err);
+        const registryBlobId = getRegistryBlobId();
+        
+        if (registryBlobId) {
+          try {
+            const registryContent = await storageClient.download(registryBlobId);
+            const registry: AuthorRequest[] = JSON.parse(registryContent);
+            
+            // Find request for current user
+            const userRequest = registry.find(
+              req => req.requester.toLowerCase() === currentAccount.address.toLowerCase()
+            );
+            
+            if (userRequest) {
+              setExistingRequest(userRequest);
+            }
+          } catch (err: any) {
+            // Registry doesn't exist yet or error fetching - that's okay
+            if (!err?.message?.includes('404')) {
+              console.warn('Error fetching author requests registry:', err);
+            }
           }
         }
       } catch (err) {
@@ -79,12 +96,33 @@ export default function BecomeAuthorPage() {
       
       // Fetch existing registry
       let registry: AuthorRequest[] = [];
-      try {
-        const registryContent = await storageClient.download(AUTHOR_REQUESTS_BLOB_ID);
-        registry = JSON.parse(registryContent);
-      } catch (err: any) {
-        // Registry doesn't exist yet - create new one
-        console.log('Creating new author requests registry');
+      const registryBlobId = getRegistryBlobId();
+      
+      if (registryBlobId) {
+        try {
+          const registryContent = await storageClient.download(registryBlobId);
+          registry = JSON.parse(registryContent);
+          
+          // Check if user already has a pending/approved request
+          const existingUserRequest = registry.find(
+            r => r.requester.toLowerCase() === currentAccount.address.toLowerCase()
+          );
+          
+          if (existingUserRequest) {
+            if (existingUserRequest.status === 'pending') {
+              error('You already have a pending request. Please wait for admin approval.');
+              return;
+            } else if (existingUserRequest.status === 'approved') {
+              error('Your request was already approved! Please refresh the page.');
+              return;
+            }
+          }
+        } catch (err: any) {
+          console.warn('Could not fetch existing registry:', err);
+          // Continue anyway - might be first request
+        }
+      } else {
+        console.log('No registry blob ID found, creating new registry');
       }
 
       // Create new request
@@ -105,8 +143,9 @@ export default function BecomeAuthorPage() {
       const newBlobId = await storageClient.upload(JSON.stringify(registry, null, 2));
       console.log('✅ Author request submitted. New registry blob ID:', newBlobId);
 
-      // Note: In production, you'd want to update the AUTHOR_REQUESTS_BLOB_ID
-      // For now, we'll just show success and store locally
+      // Save the new blob ID to localStorage
+      saveRegistryBlobId(newBlobId);
+
       setExistingRequest(newRequest);
       success('Author request submitted successfully! Admin will review your application.');
     } catch (err) {

@@ -15,7 +15,20 @@ import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 import { useToast } from '@/lib/hooks/useToast';
 import { formatAddress } from '@/lib/utils/format';
 
-const AUTHOR_REQUESTS_BLOB_ID = 'author_requests_registry';
+const AUTHOR_REQUESTS_STORAGE_KEY = 'writeblock_author_requests_blob_id';
+
+// Get the current registry blob ID from localStorage
+const getRegistryBlobId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(AUTHOR_REQUESTS_STORAGE_KEY);
+};
+
+// Save the registry blob ID to localStorage
+const saveRegistryBlobId = (blobId: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AUTHOR_REQUESTS_STORAGE_KEY, blobId);
+  console.log('📝 Registry blob ID saved:', blobId);
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -54,15 +67,23 @@ export default function AdminPage() {
 
         // Fetch author requests
         const storageClient = getStorageClient();
-        try {
-          const registryContent = await storageClient.download(AUTHOR_REQUESTS_BLOB_ID);
-          const requests: AuthorRequest[] = JSON.parse(registryContent);
-          setAuthorRequests(requests);
-        } catch (err: any) {
-          // Registry doesn't exist yet - that's okay
-          if (!err?.message?.includes('404')) {
-            console.warn('Error fetching author requests:', err);
+        const registryBlobId = getRegistryBlobId();
+        
+        if (registryBlobId) {
+          try {
+            console.log('📥 Fetching author requests from blob:', registryBlobId);
+            const registryContent = await storageClient.download(registryBlobId);
+            const requests: AuthorRequest[] = JSON.parse(registryContent);
+            console.log('✅ Found', requests.length, 'author requests');
+            setAuthorRequests(requests);
+          } catch (err: any) {
+            // Registry doesn't exist yet - that's okay
+            if (!err?.message?.includes('404')) {
+              console.warn('Error fetching author requests:', err);
+            }
           }
+        } else {
+          console.log('ℹ️ No author requests registry found yet');
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -108,7 +129,9 @@ export default function AdminPage() {
 
       // Upload updated registry
       const storageClient = getStorageClient();
-      await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+      const newBlobId = await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+      saveRegistryBlobId(newBlobId);
+      console.log('✅ Updated registry saved with new blob ID:', newBlobId);
 
       // Refresh authors list
       setTimeout(async () => {
@@ -152,7 +175,9 @@ export default function AdminPage() {
 
       // Upload updated registry
       const storageClient = getStorageClient();
-      await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+      const newBlobId = await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+      saveRegistryBlobId(newBlobId);
+      console.log('✅ Updated registry saved with new blob ID:', newBlobId);
 
       success(`Request from ${request.name} has been rejected.`);
     } catch (err) {
