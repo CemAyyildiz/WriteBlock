@@ -3,167 +3,198 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
-import AdminInfoCard from '@/components/admin/AdminInfoCard';
-import GrantAuthorForm from '@/components/admin/GrantAuthorForm';
-import HowItWorksSection from '@/components/admin/HowItWorksSection';
-import SuccessMessage from '@/components/admin/SuccessMessage';
+import AdminStats from '@/components/admin/AdminStats';
+import AuthorRequestsList from '@/components/admin/AuthorRequestsList';
 import AuthorsList from '@/components/admin/AuthorsList';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import Toast from '@/components/Toast';
-import { Author } from '@/types';
-import { getBlockchainClient, getWalletClient, getProviderConfig } from '@/lib/client';
+import { Author, AuthorRequest } from '@/types';
+import { getBlockchainClient, getWalletClient, getStorageClient } from '@/lib/client';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 import { useToast } from '@/lib/hooks/useToast';
-import { formatAddress, formatDate, isValidSuiAddress } from '@/lib/utils/format';
+import { formatAddress } from '@/lib/utils/format';
+
+const AUTHOR_REQUESTS_BLOB_ID = 'author_requests_registry';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [authors, setAuthors] = useState<Author[]>([]);
-  const [newAuthorAddress, setNewAuthorAddress] = useState('');
-  const [newAuthorName, setNewAuthorName] = useState('');
-  const [isGranting, setIsGranting] = useState(false);
-  const [grantSuccess, setGrantSuccess] = useState(false);
-  const [txHash, setTxHash] = useState('');
-
   const currentAccount = useCurrentAccount();
   const { adminCapId } = useWalletCapabilities();
-  const config = getProviderConfig();
-  const { toasts, hideToast, success, error, warning } = useToast();
+  const { toasts, hideToast, success, error } = useToast();
 
-  // Fetch authors from blockchain
+  const [loading, setLoading] = useState(true);
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [authorRequests, setAuthorRequests] = useState<AuthorRequest[]>([]);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'requests' | 'authors'>('requests');
+
+  // Fetch authors and requests
   useEffect(() => {
-    const fetchAuthors = async () => {
+    const fetchData = async () => {
+      if (!adminCapId) {
+        setLoading(false);
+        return;
+      }
+
       try {
+        // Fetch authors
         const wallet = getWalletClient();
         const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
         
-        if (!packageId) {
-          console.warn('Package ID not configured');
-          return;
+        if (packageId) {
+          const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
+          const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
+            address: cap.author,
+            name: `Author ${formatAddress(cap.author)}`,
+            granted_at: cap.issued_at,
+          }));
+          setAuthors(authorsData);
         }
 
-        console.log('🔍 Fetching authors from admin transaction history...');
-        const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
-        
-        console.log('📋 Found', authorCapabilities.length, 'authors from blockchain');
-        
-        const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
-          address: cap.author,
-          name: `Author ${formatAddress(cap.author)}`,
-          granted_at: cap.issued_at,
-        }));
-        
-        setAuthors(authorsData);
-      } catch (error) {
-        console.error('Error fetching authors from blockchain:', error);
+        // Fetch author requests
+        const storageClient = getStorageClient();
+        try {
+          const registryContent = await storageClient.download(AUTHOR_REQUESTS_BLOB_ID);
+          const requests: AuthorRequest[] = JSON.parse(registryContent);
+          setAuthorRequests(requests);
+        } catch (err: any) {
+          // Registry doesn't exist yet - that's okay
+          if (!err?.message?.includes('404')) {
+            console.warn('Error fetching author requests:', err);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        error('Failed to load data');
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (adminCapId) {
-      fetchAuthors();
-    }
-  }, [adminCapId]);
+    fetchData();
+  }, [adminCapId, error]);
 
-  const handleGrantCapability = async () => {
-    if (!newAuthorAddress || !newAuthorName) {
-      error('Please fill all fields');
+  const handleApproveRequest = async (request: AuthorRequest) => {
+    if (!adminCapId || !currentAccount) {
+      error('Admin capability required');
       return;
     }
 
-    if (!isValidSuiAddress(newAuthorAddress)) {
-      error('Invalid Sui address format. Address must start with 0x and be 66 characters long.');
-      return;
-    }
-
-    if (authors.some(a => a.address.toLowerCase() === newAuthorAddress.toLowerCase())) {
-      warning('This address already has author capability');
-      return;
-    }
-
-    if (config.blockchain === 'sui') {
-      if (!currentAccount) {
-        error('Please connect your Sui wallet first');
-        return;
-      }
-      if (!adminCapId) {
-        error('You need Admin capability to grant author permissions. Only the deployer has admin rights.');
-        return;
-      }
-    }
-
-    setIsGranting(true);
-    setGrantSuccess(false);
+    setProcessingRequestId(request.id);
 
     try {
       const blockchainClient = getBlockchainClient();
       
-      const capabilityId = adminCapId!;
-      
+      // Grant author capability on blockchain
       const txResult = await blockchainClient.grantAuthorCapability(
-        capabilityId,
-        newAuthorAddress
+        adminCapId,
+        request.requester
       );
-      console.log('✅ Author capability granted:', txResult.txHash);
-      
+
       if (!txResult.success) {
         throw new Error(txResult.error || 'Transaction failed');
       }
-      
-      setTxHash(txResult.txHash);
-      setGrantSuccess(true);
-      success('Author capability granted successfully!');
-      
-      setNewAuthorAddress('');
-      setNewAuthorName('');
-      
-      // Refresh author list from blockchain after transaction is confirmed
+
+      success(`Author capability granted to ${request.name}!`);
+
+      // Update request status in storage
+      const updatedRequests = authorRequests.map(r =>
+        r.id === request.id
+          ? { ...r, status: 'approved' as const, processedAt: Date.now(), processedBy: currentAccount.address }
+          : r
+      );
+      setAuthorRequests(updatedRequests);
+
+      // Upload updated registry
+      const storageClient = getStorageClient();
+      await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+
+      // Refresh authors list
       setTimeout(async () => {
-        try {
-          const wallet = getWalletClient();
-          const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
-          
-          if (packageId) {
-            console.log('🔄 Refreshing author list from blockchain...');
-            const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
-            const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
-              address: cap.author,
-              name: `Author ${formatAddress(cap.author)}`,
-              granted_at: cap.issued_at,
-            }));
-            
-            setAuthors(authorsData);
-            console.log('✅ Author list refreshed:', authorsData.length, 'authors');
-          }
-        } catch (err) {
-          console.error('Error refreshing author list:', err);
-        }
+        const wallet = getWalletClient();
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
         
-        setGrantSuccess(false);
-      }, 3000);
+        if (packageId) {
+          const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
+          const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
+            address: cap.author,
+            name: `Author ${formatAddress(cap.author)}`,
+            granted_at: cap.issued_at,
+          }));
+          setAuthors(authorsData);
+        }
+      }, 2000);
     } catch (err) {
-      console.error('Grant error:', err);
-      error('Authorization failed: ' + (err as Error).message);
+      console.error('Error approving request:', err);
+      error('Failed to approve request: ' + (err as Error).message);
     } finally {
-      setIsGranting(false);
+      setProcessingRequestId(null);
     }
   };
+
+  const handleRejectRequest = async (request: AuthorRequest) => {
+    if (!currentAccount) {
+      error('Please connect your wallet');
+      return;
+    }
+
+    setProcessingRequestId(request.id);
+
+    try {
+      // Update request status
+      const updatedRequests = authorRequests.map(r =>
+        r.id === request.id
+          ? { ...r, status: 'rejected' as const, processedAt: Date.now(), processedBy: currentAccount.address }
+          : r
+      );
+      setAuthorRequests(updatedRequests);
+
+      // Upload updated registry
+      const storageClient = getStorageClient();
+      await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
+
+      success(`Request from ${request.name} has been rejected.`);
+    } catch (err) {
+      console.error('Error rejecting request:', err);
+      error('Failed to reject request: ' + (err as Error).message);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Sidebar />
+        <div className="min-h-screen w-full bg-gradient-to-b from-gray-50 to-white flex items-center justify-center pt-16 lg:pt-0">
+          <LoadingAnimation message="Loading admin panel..." size="lg" />
+        </div>
+      </>
+    );
+  }
 
   if (!currentAccount) {
     return (
       <>
         <Sidebar />
-        <main className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
+        <main className="min-h-screen w-full bg-gradient-to-b from-gray-50 to-white flex items-center justify-center pt-16 lg:pt-0">
           <div className="text-center max-w-md px-6">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-3xl">🔒</span>
+            <div className="w-20 h-20 bg-white border-2 border-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🔒</span>
             </div>
-            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-4">
               Connect Your Wallet
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-8 leading-relaxed">
               Please connect your Sui wallet to access the admin panel.
             </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+            >
+              Back to Home
+            </button>
           </div>
         </main>
       </>
@@ -174,22 +205,22 @@ export default function AdminPage() {
     return (
       <>
         <Sidebar />
-        <main className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
+        <main className="min-h-screen w-full bg-gradient-to-b from-gray-50 to-white flex items-center justify-center pt-16 lg:pt-0">
           <div className="text-center max-w-md px-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-3xl">⚠️</span>
+            <div className="w-20 h-20 bg-red-50 border-2 border-red-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">⚠️</span>
             </div>
-            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
-              Admin Capability Required
+            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+              Admin Access Required
             </h2>
-            <p className="text-gray-600 mb-6">
-              You need Admin capability to manage author permissions. Only the contract deployer has admin rights.
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              You need Admin capability to access this page. Only the contract deployer has admin rights.
             </p>
             <button
               onClick={() => router.push('/')}
               className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
             >
-              Go to Home
+              Back to Home
             </button>
           </div>
         </main>
@@ -200,44 +231,96 @@ export default function AdminPage() {
   return (
     <>
       <Sidebar />
-      <main className="bg-white pt-16 lg:pt-0">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 py-12">
-          <AdminHeader />
-
-          <AdminInfoCard
-            currentAccount={currentAccount}
-            adminCapId={adminCapId}
-          />
-
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            <GrantAuthorForm
-              newAuthorName={newAuthorName}
-              newAuthorAddress={newAuthorAddress}
-              isGranting={isGranting}
-              onNameChange={setNewAuthorName}
-              onAddressChange={setNewAuthorAddress}
-              onSubmit={handleGrantCapability}
-            />
-
-            <HowItWorksSection />
+      <main className="bg-gradient-to-b from-gray-50 to-white min-h-screen pt-16 lg:pt-0">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12">
+          
+          {/* Header */}
+          <div className="mb-12">
+            <button
+              onClick={() => router.push('/')}
+              className="text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2 text-sm mb-6 group"
+            >
+              <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span>
+              <span>Back to home</span>
+            </button>
+            
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-4xl sm:text-5xl font-serif font-bold text-gray-900">
+                Admin Panel
+              </h1>
+              <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <span className="text-xs font-semibold text-blue-800">ADMIN</span>
+              </div>
+            </div>
+            <p className="text-lg text-gray-600 leading-relaxed">
+              Manage author requests and permissions for WriteBlock.
+            </p>
           </div>
 
-          {grantSuccess && txHash && (
-            <SuccessMessage txHash={txHash} />
-          )}
+          {/* Stats */}
+          <div className="mb-12">
+            <AdminStats authors={authors} authorRequests={authorRequests} />
+          </div>
 
-          <AuthorsList authors={authors} />
+          {/* Tabs */}
+          <div className="border-b border-gray-200 mb-8">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('requests')}
+                className={`pb-4 px-2 font-semibold transition-colors relative ${
+                  activeTab === 'requests'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Author Requests
+                {authorRequests.filter(r => r.status === 'pending').length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
+                    {authorRequests.filter(r => r.status === 'pending').length}
+                  </span>
+                )}
+                {activeTab === 'requests' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('authors')}
+                className={`pb-4 px-2 font-semibold transition-colors relative ${
+                  activeTab === 'authors'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Active Authors
+                {activeTab === 'authors' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
+                )}
+              </button>
+            </div>
+          </div>
 
-          {/* Toast Notifications */}
-          {toasts.map((toast) => (
-            <Toast
-              key={toast.id}
-              message={toast.message}
-              type={toast.type}
-              onClose={() => hideToast(toast.id)}
+          {/* Tab Content */}
+          {activeTab === 'requests' ? (
+            <AuthorRequestsList
+              requests={authorRequests}
+              onApprove={handleApproveRequest}
+              onReject={handleRejectRequest}
+              processing={processingRequestId}
             />
-          ))}
+          ) : (
+            <AuthorsList authors={authors} />
+          )}
         </div>
+
+        {/* Toast Notifications */}
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => hideToast(toast.id)}
+          />
+        ))}
       </main>
     </>
   );

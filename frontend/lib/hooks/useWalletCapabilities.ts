@@ -69,12 +69,8 @@ export function useWalletCapabilities(): WalletCapabilities {
         const wallet = getWalletClient();
         const caps = await wallet.getUserCapabilities(currentAccount.address);
 
-        // Check for admin capability from env or wallet
-        const envAdminCapId = process.env.NEXT_PUBLIC_ADMIN_CAP_ID;
-        if (envAdminCapId) {
-          setAdminCapId(envAdminCapId);
-          setRole('admin');
-        } else if (caps.adminCapId) {
+        // Set capabilities and determine role based on what user actually owns
+        if (caps.adminCapId) {
           setAdminCapId(caps.adminCapId);
           setRole('admin');
         } else if (caps.authorCapId) {
@@ -84,7 +80,7 @@ export function useWalletCapabilities(): WalletCapabilities {
           setRole('viewer');
         }
 
-        // Also check for author capability
+        // Also set author capability if exists (admin can also be author)
         if (caps.authorCapId) {
           setAuthorCapId(caps.authorCapId);
         }

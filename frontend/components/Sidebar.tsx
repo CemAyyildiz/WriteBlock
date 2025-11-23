@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
-import { Home, PenTool, Shield, User, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, PenTool, Shield, User, Menu, X, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
@@ -94,33 +94,51 @@ export default function Sidebar() {
           {isOpen && <span className="text-sm whitespace-nowrap">Home</span>}
         </Link>
 
-        <Link
-          href="/author"
-          onClick={() => setIsOpen(false)}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive('/author')
-              ? 'bg-gray-100 text-gray-900 font-medium'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          } ${!isOpen ? 'lg:justify-center lg:px-0' : ''}`}
-          title={!isOpen ? 'Write' : ''}
-        >
-          <PenTool className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
-          {isOpen && <span className="text-sm whitespace-nowrap">Write</span>}
-        </Link>
+        {userRole === 'author' || userRole === 'admin' ? (
+          <Link
+            href="/author"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+              isActive('/author')
+                ? 'bg-gray-100 text-gray-900 font-medium'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            } ${!isOpen ? 'lg:justify-center lg:px-0' : ''}`}
+            title={!isOpen ? 'Write' : ''}
+          >
+            <PenTool className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+            {isOpen && <span className="text-sm whitespace-nowrap">Write</span>}
+          </Link>
+        ) : (
+          <Link
+            href="/become-author"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+              isActive('/become-author')
+                ? 'bg-gray-100 text-gray-900 font-medium'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            } ${!isOpen ? 'lg:justify-center lg:px-0' : ''}`}
+            title={!isOpen ? 'Become Author' : ''}
+          >
+            <UserPlus className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+            {isOpen && <span className="text-sm whitespace-nowrap">Become Author</span>}
+          </Link>
+        )}
 
-        <Link
-          href="/admin"
-          onClick={() => setIsOpen(false)}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive('/admin')
-              ? 'bg-gray-100 text-gray-900 font-medium'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-          } ${!isOpen ? 'lg:justify-center lg:px-0' : ''}`}
-          title={!isOpen ? 'Admin' : ''}
-        >
-          <Shield className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
-          {isOpen && <span className="text-sm whitespace-nowrap">Admin</span>}
-        </Link>
+        {userRole === 'admin' && (
+          <Link
+            href="/admin"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+              isActive('/admin')
+                ? 'bg-gray-100 text-gray-900 font-medium'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            } ${!isOpen ? 'lg:justify-center lg:px-0' : ''}`}
+            title={!isOpen ? 'Admin' : ''}
+          >
+            <Shield className="w-5 h-5 flex-shrink-0" strokeWidth={1.5} />
+            {isOpen && <span className="text-sm whitespace-nowrap">Admin</span>}
+          </Link>
+        )}
       </nav>
 
       {/* Bottom Section */}

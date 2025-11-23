@@ -54,3 +54,16 @@ export interface EditRequest {
   excerpt?: string;
   content?: string;
 }
+
+export interface AuthorRequest {
+  id: string;
+  requester: string;
+  name: string;
+  bio?: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
+  processedAt?: number;
+  processedBy?: string;
+  walrusBlobId?: string; // Where the request data is stored
+}
