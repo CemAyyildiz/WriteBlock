@@ -52,7 +52,7 @@ export default function HowItWorksSection() {
 
         <div className="p-4 rounded-lg bg-green-50 border border-green-200">
           <p className="text-sm text-gray-700">
-            <strong className="text-gray-900">Important:</strong> Author_Capability is non-copyable and non-droppable, ensuring secure permission management.
+            <strong className="text-gray-900">Important:</strong> Author_Capability is non-copyable and non-droppable, ensuring secure permission management. The author list is fetched directly from the blockchain by analyzing admin transaction history.
           </p>
         </div>
       </div>

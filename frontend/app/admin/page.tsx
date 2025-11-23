@@ -28,17 +28,39 @@ export default function AdminPage() {
   const [adminCapId, setAdminCapId] = useState<string | null>(null);
   const config = getProviderConfig();
 
-  // Load authors from localStorage on mount
+  // Fetch authors from blockchain (admin'in transaction history'sinden)
   useEffect(() => {
-    const storedAuthors = localStorage.getItem('writeblock_authors');
-    if (storedAuthors) {
+    const fetchAuthors = async () => {
       try {
-        setAuthors(JSON.parse(storedAuthors));
+        const wallet = getWalletClient();
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+        
+        if (!packageId) {
+          console.warn('Package ID not configured');
+          return;
+        }
+
+        console.log('🔍 Fetching authors from admin transaction history...');
+        const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
+        
+        console.log('📋 Found', authorCapabilities.length, 'authors from blockchain');
+        
+        const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
+          address: cap.author,
+          name: `Author ${cap.author.substring(0, 6)}...${cap.author.substring(cap.author.length - 4)}`,
+          granted_at: cap.issued_at,
+        }));
+        
+        setAuthors(authorsData);
       } catch (error) {
-        console.error('Error loading authors from localStorage:', error);
+        console.error('Error fetching authors from blockchain:', error);
       }
+    };
+
+    if (adminCapId) {
+      fetchAuthors();
     }
-  }, []);
+  }, [adminCapId]);
 
   // Initialize Sui wallet connection
   useEffect(() => {
@@ -136,25 +158,36 @@ export default function AdminPage() {
         throw new Error(txResult.error || 'Transaction failed');
       }
       
-      const newAuthor: Author = {
-        address: newAuthorAddress,
-        name: newAuthorName,
-        granted_at: Date.now(),
-      };
-      
-      const updatedAuthors = [...authors, newAuthor];
-      setAuthors(updatedAuthors);
-      
-      // Save to localStorage
-      localStorage.setItem('writeblock_authors', JSON.stringify(updatedAuthors));
-      
       setTxHash(txResult.txHash);
       setGrantSuccess(true);
       
       setNewAuthorAddress('');
       setNewAuthorName('');
       
-      setTimeout(() => setGrantSuccess(false), 5000);
+      // Refresh author list from blockchain after transaction is confirmed
+      setTimeout(async () => {
+        try {
+          const wallet = getWalletClient();
+          const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+          
+          if (packageId) {
+            console.log('🔄 Refreshing author list from blockchain...');
+            const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
+            const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
+              address: cap.author,
+              name: `Author ${cap.author.substring(0, 6)}...${cap.author.substring(cap.author.length - 4)}`,
+              granted_at: cap.issued_at,
+            }));
+            
+            setAuthors(authorsData);
+            console.log('✅ Author list refreshed:', authorsData.length, 'authors');
+          }
+        } catch (err) {
+          console.error('Error refreshing author list:', err);
+        }
+        
+        setGrantSuccess(false);
+      }, 3000);
     } catch (error) {
       console.error('Grant error:', error);
       alert('Authorization failed: ' + (error as Error).message);

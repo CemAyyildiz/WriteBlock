@@ -220,5 +220,108 @@ export class SuiWalletClient implements IWalletClient {
   getClient(): SuiClient {
     return this.client;
   }
+
+  /**
+   * Get all Author_Capability grants from admin's transaction history
+   * Admin verdiği tüm author capability'leri transaction history'den buluyoruz
+   */
+  async getAuthorCapabilities(packageId: string): Promise<any[]> {
+    try {
+      // Admin address'i bul (ADMIN_CAP_ID'nin owner'ı veya deployer)
+      const adminCapId = process.env.NEXT_PUBLIC_ADMIN_CAP_ID;
+      
+      if (!adminCapId) {
+        console.warn('Admin Cap ID not configured');
+        return [];
+      }
+      
+      // Admin Cap objesini al
+      const adminCapObject = await this.client.getObject({
+        id: adminCapId,
+        options: {
+          showOwner: true,
+        },
+      });
+      
+      const adminAddress = (adminCapObject.data?.owner as any)?.AddressOwner;
+      
+      if (!adminAddress) {
+        console.warn('Could not determine admin address');
+        return [];
+      }
+      
+      console.log('🔍 Admin address:', adminAddress);
+      console.log('📋 Querying admin transaction history...');
+      
+      // Admin'in transaction'larını query et
+      const txResponse = await this.client.queryTransactionBlocks({
+        filter: {
+          FromAddress: adminAddress,
+        },
+        options: {
+          showEffects: true,
+          showInput: true,
+          showObjectChanges: true,
+        },
+        limit: 100,
+      });
+      
+      console.log('✅ Found', txResponse.data.length, 'transactions');
+      
+      const authors: any[] = [];
+      const seenAddresses = new Set<string>();
+      
+      // Her transaction'ı kontrol et
+      for (const tx of txResponse.data) {
+        // Transaction'daki move call'ları kontrol et
+        const transaction = tx.transaction;
+        const kind = (transaction as any)?.data?.transaction?.kind;
+        
+        if (kind === 'ProgrammableTransaction') {
+          const programmableTx = (transaction as any).data.transaction;
+          const transactions = programmableTx.transactions || [];
+          
+          for (const innerTx of transactions) {
+            if (innerTx.MoveCall) {
+              const moveCall = innerTx.MoveCall;
+              const target = `${moveCall.package}::${moveCall.module}::${moveCall.function}`;
+              
+              // grant_author_capability çağrısını bul
+              if (target === `${packageId}::contract::grant_author_capability`) {
+                // Argument'leri parse et - recipient address ikinci argument
+                const args = moveCall.arguments || [];
+                
+                // Object changes'den yeni oluşturulan Author_Capability'yi bul
+                const objectChanges = tx.objectChanges || [];
+                for (const change of objectChanges) {
+                  if (change.type === 'created' && 
+                      change.objectType?.includes('Author_Capability')) {
+                    const recipient = (change as any).owner?.AddressOwner;
+                    const timestamp = parseInt(tx.timestampMs || '0');
+                    
+                    if (recipient && !seenAddresses.has(recipient)) {
+                      seenAddresses.add(recipient);
+                      authors.push({
+                        author: recipient,
+                        issued_at: timestamp,
+                        tx_digest: tx.digest,
+                      });
+                      console.log('✅ Found author:', recipient);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      console.log('📋 Total authors found:', authors.length);
+      return authors;
+    } catch (error) {
+      console.error('Error querying author capabilities from admin transactions:', error);
+      return [];
+    }
+  }
 }
 

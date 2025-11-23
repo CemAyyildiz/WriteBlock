@@ -39,6 +39,13 @@ export interface IWalletClient {
    * @returns Transaction result
    */
   signAndExecuteTransaction(transaction: any): Promise<TransactionResult>;
+
+  /**
+   * Get all Author_Capability objects from blockchain
+   * @param packageId - Package ID
+   * @returns List of author capabilities
+   */
+  getAuthorCapabilities(packageId: string): Promise<any[]>;
 }
 
 export interface UserCapabilities {
