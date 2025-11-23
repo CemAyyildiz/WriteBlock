@@ -48,9 +48,9 @@ export default function Sidebar() {
         transition-all duration-300 ease-in-out
         ${isOpen ? 'w-64' : 'w-0 lg:w-20'}
       `}>
-        {/* Logo & Toggle */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <Link href="/" className="block overflow-hidden" onClick={() => setIsOpen(false)}>
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-center">
+          <Link href="/" className="block overflow-hidden">
             {isOpen ? (
               <div className="flex items-center gap-3">
                 <LogoAnimation size="sm" />
@@ -67,22 +67,12 @@ export default function Sidebar() {
               </div>
             )}
           </Link>
-          
-          {/* Desktop Toggle Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="hidden lg:flex p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Toggle sidebar"
-          >
-            {isOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-          </button>
         </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-hidden">
+      <nav className="flex-1 p-4 space-y-1 overflow-hidden relative">
         <Link
           href="/"
-          onClick={() => setIsOpen(false)}
           className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
             isActive('/')
               ? 'bg-gray-100 text-gray-900 font-medium'
@@ -97,7 +87,6 @@ export default function Sidebar() {
         {userRole === 'author' || userRole === 'admin' ? (
           <Link
             href="/author"
-            onClick={() => setIsOpen(false)}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
               isActive('/author')
                 ? 'bg-gray-100 text-gray-900 font-medium'
@@ -111,7 +100,6 @@ export default function Sidebar() {
         ) : (
           <Link
             href="/become-author"
-            onClick={() => setIsOpen(false)}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
               isActive('/become-author')
                 ? 'bg-gray-100 text-gray-900 font-medium'
@@ -127,7 +115,6 @@ export default function Sidebar() {
         {userRole === 'admin' && (
           <Link
             href="/admin"
-            onClick={() => setIsOpen(false)}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
               isActive('/admin')
                 ? 'bg-gray-100 text-gray-900 font-medium'
@@ -139,6 +126,19 @@ export default function Sidebar() {
             {isOpen && <span className="text-sm whitespace-nowrap">Admin</span>}
           </Link>
         )}
+
+        {/* Desktop Toggle Button - Middle of sidebar */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-3 p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors shadow-sm z-50"
+          aria-label="Toggle sidebar"
+        >
+          {isOpen ? (
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          )}
+        </button>
       </nav>
 
       {/* Bottom Section */}
