@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_STORAGE_PROVIDER": "walrus",
+    "NEXT_PUBLIC_BLOCKCHAIN_PROVIDER": "sui",
+    "NEXT_PUBLIC_WALLET_PROVIDER": "sui",
+    "NEXT_PUBLIC_SUI_NETWORK": "testnet",
+    "NEXT_PUBLIC_WALRUS_PUBLISHER_URL": "https://publisher.walrus-testnet.walrus.space",
+    "NEXT_PUBLIC_WALRUS_AGGREGATOR_URL": "https://aggregator.walrus-testnet.walrus.space",
+    "NEXT_PUBLIC_PACKAGE_ID": "@YOUR_PACKAGE_ID",
+    "NEXT_PUBLIC_REGISTRY_ID": "@YOUR_REGISTRY_ID"
+  }
+}

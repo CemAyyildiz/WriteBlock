@@ -57,7 +57,11 @@ export function usePages() {
       const envRegistryId = registryId || process.env.NEXT_PUBLIC_REGISTRY_ID;
 
       if (!envRegistryId) {
-        throw new Error('Registry ID not configured');
+        const msg = 'Registry ID not configured. Please set NEXT_PUBLIC_REGISTRY_ID in environment variables. Deploy smart contract and update the environment variable.';
+        console.warn(msg);
+        setError(msg);
+        setLoading(false);
+        return [];
       }
 
       const pageIds = await blockchainClient.getAllPages(envRegistryId);
@@ -109,8 +113,9 @@ export function usePages() {
       return pagesData;
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to load articles';
+      console.error('Error fetching pages:', errorMsg, err);
       setError(errorMsg);
-      throw err;
+      return [];
     } finally {
       setLoading(false);
     }

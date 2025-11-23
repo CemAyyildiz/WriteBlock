@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:static": "NEXT_EXPORT=true next build && mv .next/static out/static 2>/dev/null || true",
+    "build:walrus": "NEXT_EXPORT=true next build && next export",
     "start": "next start",
     "lint": "next lint"
   },

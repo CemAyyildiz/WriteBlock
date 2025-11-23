@@ -34,8 +34,12 @@ export class WalrusStorageClient implements IStorageClient {
         bodyContent = await content.text();
       }
 
-      // API route'a POST request (CORS problemi yok!)
-      const response = await fetch('/api/walrus/upload', {
+      // API route - Walrus Sites'ta Vercel backend'e yönlendir
+      const apiBase = typeof window !== 'undefined' && 
+        (window.location.hostname.includes('walrus.site') || window.location.hostname.includes('walrus.space'))
+        ? 'https://write-block.vercel.app'
+        : '';
+      const response = await fetch(`${apiBase}/api/walrus/upload`, {
         method: 'POST',
         body: bodyContent,
         headers: {
@@ -72,8 +76,12 @@ export class WalrusStorageClient implements IStorageClient {
     try {
       console.log('🐋 Downloading via API route:', blobId);
       
-      // API route'a GET request (CORS problemi yok ve alternatif endpoint'leri dener!)
-      const response = await fetch(`/api/walrus/download?blobId=${encodeURIComponent(blobId)}`, {
+      // API route - Walrus Sites'ta Vercel backend'e yönlendir
+      const apiBase = typeof window !== 'undefined' && 
+        (window.location.hostname.includes('walrus.site') || window.location.hostname.includes('walrus.space'))
+        ? 'https://write-block.vercel.app'
+        : '';
+      const response = await fetch(`${apiBase}/api/walrus/download?blobId=${encodeURIComponent(blobId)}`, {
         method: 'GET',
         headers: {
           'Accept': 'text/plain, */*',
