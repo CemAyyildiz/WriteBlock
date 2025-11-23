@@ -448,19 +448,17 @@ export default function AuthorPage() {
     return (
       <>
         <Sidebar />
-        <main className="bg-white pt-16 lg:pt-0">
-          <div className="max-w-7xl mx-auto px-6 sm:px-8 py-12">
-            <div className="text-center max-w-md mx-auto py-20">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">🔒</span>
-              </div>
-              <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
-                Connect Your Wallet
-              </h2>
-              <p className="text-gray-600">
-                Please connect your Sui wallet to access the author dashboard.
-              </p>
+        <main className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
+          <div className="text-center max-w-md px-6">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl">🔒</span>
             </div>
+            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
+              Connect Your Wallet
+            </h2>
+            <p className="text-gray-600">
+              Please connect your Sui wallet to access the author dashboard.
+            </p>
           </div>
         </main>
       </>
@@ -471,25 +469,23 @@ export default function AuthorPage() {
     return (
       <>
         <Sidebar />
-        <main className="bg-white pt-16 lg:pt-0">
-          <div className="max-w-7xl mx-auto px-6 sm:px-8 py-12">
-            <div className="text-center max-w-md mx-auto py-20">
-              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">⚠️</span>
-              </div>
-              <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
-                Author Capability Required
-              </h2>
-              <p className="text-gray-600 mb-6">
-                You need an Author capability to publish articles. Please contact the admin or visit the Admin Panel to grant yourself this capability.
-              </p>
-              <button
-                onClick={() => router.push('/admin')}
-                className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
-              >
-                Go to Admin Panel
-              </button>
+        <main className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
+          <div className="text-center max-w-md px-6">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl">⚠️</span>
             </div>
+            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
+              Author Capability Required
+            </h2>
+            <p className="text-gray-600 mb-6">
+              You need an Author capability to publish articles. Please contact the admin or visit the Admin Panel to grant yourself this capability.
+            </p>
+            <button
+              onClick={() => router.push('/admin')}
+              className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+            >
+              Go to Admin Panel
+            </button>
           </div>
         </main>
       </>

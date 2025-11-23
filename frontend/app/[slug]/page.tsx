@@ -217,7 +217,7 @@ export default function PostPage() {
     return (
       <>
         <Sidebar />
-        <div className="max-w-3xl mx-auto px-6 py-24 bg-white pt-16 lg:pt-0">
+        <div className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
           <LoadingAnimation message="Loading story..." size="lg" />
         </div>
       </>
@@ -228,20 +228,22 @@ export default function PostPage() {
     return (
       <>
         <Sidebar />
-        <div className="max-w-3xl mx-auto px-6 py-24 text-center bg-white pt-16 lg:pt-0">
-          <p className="text-4xl mb-4">📚</p>
-          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
-            {error ? 'Failed to Load Story' : 'Story Not Found'}
-          </h1>
-          <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
-            {error || "The story you're looking for doesn't exist or has been removed."}
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
-          >
-            ← Back to home
-          </button>
+        <div className="min-h-screen w-full bg-white flex items-center justify-center pt-16 lg:pt-0">
+          <div className="text-center max-w-md px-6">
+            <p className="text-4xl mb-4">📚</p>
+            <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+              {error ? 'Failed to Load Story' : 'Story Not Found'}
+            </h1>
+            <p className="text-lg text-gray-600 mb-10 leading-relaxed">
+              {error || "The story you're looking for doesn't exist or has been removed."}
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
+            >
+              ← Back to home
+            </button>
+          </div>
         </div>
       </>
     );
