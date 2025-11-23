@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import AdminStats from '@/components/admin/AdminStats';
 import AuthorRequestsList from '@/components/admin/AuthorRequestsList';
 import AuthorsList from '@/components/admin/AuthorsList';
+import DirectGrantForm from '@/components/admin/DirectGrantForm';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import Toast from '@/components/Toast';
 import { Author, AuthorRequest } from '@/types';
@@ -41,6 +42,7 @@ export default function AdminPage() {
   const [authorRequests, setAuthorRequests] = useState<AuthorRequest[]>([]);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'requests' | 'authors'>('requests');
+  const [isGrantingDirect, setIsGrantingDirect] = useState(false);
 
   // Fetch authors and requests
   useEffect(() => {
@@ -188,6 +190,52 @@ export default function AdminPage() {
     }
   };
 
+  const handleDirectGrant = async (address: string, name: string) => {
+    if (!adminCapId || !currentAccount) {
+      error('Admin capability required');
+      return;
+    }
+
+    setIsGrantingDirect(true);
+
+    try {
+      const blockchainClient = getBlockchainClient();
+      
+      // Grant author capability on blockchain
+      const txResult = await blockchainClient.grantAuthorCapability(
+        adminCapId,
+        address
+      );
+
+      if (!txResult.success) {
+        throw new Error(txResult.error || 'Transaction failed');
+      }
+
+      success(`Author capability granted to ${name}!`);
+
+      // Refresh authors list
+      setTimeout(async () => {
+        const wallet = getWalletClient();
+        const packageId = process.env.NEXT_PUBLIC_PACKAGE_ID;
+        
+        if (packageId) {
+          const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
+          const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
+            address: cap.author,
+            name: `Author ${formatAddress(cap.author)}`,
+            granted_at: cap.issued_at,
+          }));
+          setAuthors(authorsData);
+        }
+      }, 2000);
+    } catch (err) {
+      console.error('Error granting capability:', err);
+      error('Failed to grant capability: ' + (err as Error).message);
+    } finally {
+      setIsGrantingDirect(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -326,12 +374,26 @@ export default function AdminPage() {
 
           {/* Tab Content */}
           {activeTab === 'requests' ? (
-            <AuthorRequestsList
-              requests={authorRequests}
-              onApprove={handleApproveRequest}
-              onReject={handleRejectRequest}
-              processing={processingRequestId}
-            />
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Author Requests - 2 columns */}
+              <div className="lg:col-span-2">
+                <AuthorRequestsList
+                  requests={authorRequests}
+                  onApprove={handleApproveRequest}
+                  onReject={handleRejectRequest}
+                  processing={processingRequestId}
+                />
+              </div>
+
+              {/* Direct Grant Form - 1 column */}
+              <div className="lg:col-span-1">
+                <DirectGrantForm
+                  onGrant={handleDirectGrant}
+                  isGranting={isGrantingDirect}
+                  existingAuthors={authors.map(a => a.address)}
+                />
+              </div>
+            </div>
           ) : (
             <AuthorsList authors={authors} />
           )}

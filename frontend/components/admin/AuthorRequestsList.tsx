@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { AuthorRequest } from '@/types';
 import { formatAddress, formatDate } from '@/lib/utils/format';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface AuthorRequestsListProps {
   requests: AuthorRequest[];
@@ -14,6 +16,8 @@ export default function AuthorRequestsList({
   onReject,
   processing,
 }: AuthorRequestsListProps) {
+  const [showProcessed, setShowProcessed] = useState(false);
+  
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
 
@@ -54,25 +58,38 @@ export default function AuthorRequestsList({
         </div>
       )}
 
-      {/* Processed Requests */}
+      {/* Processed Requests - Collapsible */}
       {processedRequests.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <span>📋</span>
-            <span>Processed Requests ({processedRequests.length})</span>
-          </h3>
-          <div className="space-y-4">
-            {processedRequests.map((request) => (
-              <RequestCard
-                key={request.id}
-                request={request}
-                onApprove={onApprove}
-                onReject={onReject}
-                isProcessing={false}
-                readonly
-              />
-            ))}
-          </div>
+          <button
+            onClick={() => setShowProcessed(!showProcessed)}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-4"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <span>📋</span>
+              <span>Processed Requests ({processedRequests.length})</span>
+            </h3>
+            {showProcessed ? (
+              <ChevronDown className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ChevronRight className="w-5 h-5 text-gray-600" />
+            )}
+          </button>
+          
+          {showProcessed && (
+            <div className="space-y-4 mb-6">
+              {processedRequests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  request={request}
+                  onApprove={onApprove}
+                  onReject={onReject}
+                  isProcessing={false}
+                  readonly
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
