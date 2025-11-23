@@ -9,6 +9,18 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force dynamic rendering for API routes
 export const dynamic = 'force-dynamic';
 
+// Handle CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Request'ten content'i al
@@ -80,6 +92,12 @@ export async function POST(request: NextRequest) {
       success: true,
       blobId: blobId,
       walrusResponse: result,
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
     });
 
   } catch (error: any) {

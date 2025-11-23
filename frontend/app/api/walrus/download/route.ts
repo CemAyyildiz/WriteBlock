@@ -9,6 +9,18 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force dynamic rendering for API routes
 export const dynamic = 'force-dynamic';
 
+// Handle CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -65,6 +77,9 @@ export async function GET(request: NextRequest) {
             status: 200,
             headers: {
               'Content-Type': 'text/plain; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type',
             },
           });
         } else {

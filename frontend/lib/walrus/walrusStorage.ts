@@ -36,7 +36,9 @@ export class WalrusStorageClient implements IStorageClient {
 
       // API route - Walrus Sites'ta Vercel backend'e yönlendir
       const apiBase = typeof window !== 'undefined' && 
-        (window.location.hostname.includes('walrus.site') || window.location.hostname.includes('walrus.space'))
+        (window.location.hostname.includes('walrus.site') || 
+         window.location.hostname.includes('walrus.space') ||
+         window.location.hostname.includes('trwal.app'))
         ? 'https://write-block.vercel.app'
         : '';
       const response = await fetch(`${apiBase}/api/walrus/upload`, {
@@ -78,7 +80,9 @@ export class WalrusStorageClient implements IStorageClient {
       
       // API route - Walrus Sites'ta Vercel backend'e yönlendir
       const apiBase = typeof window !== 'undefined' && 
-        (window.location.hostname.includes('walrus.site') || window.location.hostname.includes('walrus.space'))
+        (window.location.hostname.includes('walrus.site') || 
+         window.location.hostname.includes('walrus.space') ||
+         window.location.hostname.includes('trwal.app'))
         ? 'https://write-block.vercel.app'
         : '';
       const response = await fetch(`${apiBase}/api/walrus/download?blobId=${encodeURIComponent(blobId)}`, {
