@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'WriteBlock - Decentralized Publishing',
   description: 'A decentralized publishing platform built on Sui blockchain with Walrus storage',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
