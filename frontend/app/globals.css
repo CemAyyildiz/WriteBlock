@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Merriweather:wght@300;400;700;900&display=swap');
 
 :root {
   --navy-primary: #0052cc;
@@ -34,6 +35,18 @@ body {
   font-feature-settings: 'liga' 1, 'calt' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Medium-style typography */
+.font-serif {
+  font-feature-settings: 'liga' 1, 'dlig' 1;
+  letter-spacing: -0.003em;
+}
+
+/* Enhanced readability for large text */
+h1, h2, h3 {
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.02em;
 }
 
 /* Professional Markdown Typography */

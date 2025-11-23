@@ -71,24 +71,26 @@ module.exports = {
   				'5': 'hsl(var(--chart-5))'
   			}
   		},
-  		fontFamily: {
-  			sans: [
-  				'Inter',
-  				'system-ui',
-  				'sans-serif'
-  			],
-  			serif: [
-  				'Georgia',
-  				'Cambria',
-  				'"Times New Roman"',
-  				'Times',
-  				'serif'
-  			],
-  			mono: [
-  				'JetBrains Mono',
-  				'monospace'
-  			]
-  		},
+		fontFamily: {
+			sans: [
+				'Inter',
+				'system-ui',
+				'sans-serif'
+			],
+			serif: [
+				'Lora',
+				'Merriweather',
+				'Georgia',
+				'Cambria',
+				'"Times New Roman"',
+				'Times',
+				'serif'
+			],
+			mono: [
+				'JetBrains Mono',
+				'monospace'
+			]
+		},
   		backdropBlur: {
   			xs: '2px'
   		},

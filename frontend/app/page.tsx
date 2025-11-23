@@ -2,22 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
-import LoadingState from '@/components/home/LoadingState';
-import ErrorState from '@/components/home/ErrorState';
-import HeaderSection from '@/components/home/HeaderSection';
-import StatsGrid from '@/components/home/StatsGrid';
-import ArticlesList from '@/components/home/ArticlesList';
-import InfoSection from '@/components/home/InfoSection';
-import { getBlockchainClient, getStorageClient, getProviderConfig } from '@/lib/client';
+import HeroSection from '@/components/home/HeroSection';
+import ArticleListItem from '@/components/home/ArticleListItem';
+import EmptyArticlesState from '@/components/home/EmptyArticlesState';
+import FooterCTA from '@/components/home/FooterCTA';
+import { getBlockchainClient, getStorageClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
 
 export default function Dashboard() {
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const config = getProviderConfig();
 
-  // Fetch all pages from blockchain
   useEffect(() => {
     const fetchPages = async () => {
       try {
@@ -31,72 +27,41 @@ export default function Dashboard() {
           throw new Error('Registry ID not configured');
         }
 
-        // Get all page IDs from registry
         const pageIds = await blockchainClient.getAllPages(registryId);
-        console.log('📚 Found pages:', pageIds.length);
-
-        // Fetch metadata for each page
         const pagesData: PageMetadata[] = [];
         const storageClient = getStorageClient();
 
         for (const pageId of pageIds) {
           try {
             const metadata = await blockchainClient.getPageMetadata(pageId);
+            if (metadata.deleted) continue;
             
-            // Skip deleted pages
-            if (metadata.deleted) {
-              continue;
-            }
-            
-            // Try to fetch content from Walrus to extract title, excerpt, and slug
             let title = `Article #${metadata.pageId}`;
-            let excerpt = `Published on ${new Date(metadata.updatedAt).toLocaleDateString()} • Stored on Walrus`;
+            let excerpt = `Published on ${new Date(metadata.updatedAt).toLocaleDateString()}`;
             let slug = `page-${metadata.pageId}`;
             
             try {
-              console.log(`🐋 Fetching content for page ${metadata.pageId} from Walrus:`, metadata.walrusBlobId);
               const blobContent = await storageClient.download(metadata.walrusBlobId);
-              
-              // Try to parse as JSON (new format) or use as markdown (old format)
-              let blobData: any;
-              let markdownContent: string;
               try {
-                blobData = JSON.parse(blobContent);
-                markdownContent = blobData.content || blobContent;
+                const blobData = JSON.parse(blobContent);
                 title = blobData.title || title;
                 excerpt = blobData.excerpt || excerpt;
                 slug = blobData.slug || slug;
               } catch {
-                // Old format - just markdown, extract from content
-                markdownContent = blobContent;
+                const markdownContent = blobContent;
                 const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
-                if (titleMatch) {
-                  title = titleMatch[1];
-                }
+                if (titleMatch) title = titleMatch[1];
                 
-                // Create excerpt (first paragraph after title)
                 const contentWithoutTitle = markdownContent.replace(/^#\s+.+$/m, '').trim();
                 const lines = contentWithoutTitle.split('\n').filter(line => line.trim());
                 const firstParagraph = lines[0] || '';
-                excerpt = firstParagraph.substring(0, 150) + (firstParagraph.length > 150 ? '...' : '');
+                excerpt = firstParagraph.substring(0, 200) + (firstParagraph.length > 200 ? '...' : '');
               }
-              
-              console.log(`✅ Content loaded for page ${metadata.pageId}:`, title, `(slug: ${slug})`);
-            } catch (walrusErr: any) {
-              console.warn(`⚠️ Failed to fetch Walrus content for page ${metadata.pageId}:`, walrusErr?.message || walrusErr);
-              console.warn(`   Blob ID: ${metadata.walrusBlobId}`);
-              
-              // 404 hatası ise blob henüz replicate olmamış olabilir
-              if (walrusErr?.message?.includes('404') || walrusErr?.message?.includes('not found')) {
-                excerpt = `⏳ Content is being replicated to Walrus network... • Blob ID: ${metadata.walrusBlobId.substring(0, 20)}...`;
-              } else {
-                excerpt = `📦 Blob ID: ${metadata.walrusBlobId.substring(0, 20)}... • Click to load content`;
-              }
-              // Use fallback title and excerpt
+            } catch {
+              excerpt = `Content stored on decentralized storage`;
             }
             
-            // Create page metadata with slug
-            const pageData: PageMetadata = {
+            pagesData.push({
               page_id: metadata.pageId,
               walrus_blob_id: metadata.walrusBlobId,
               version: metadata.version,
@@ -106,20 +71,15 @@ export default function Dashboard() {
               slug,
               title,
               excerpt,
-            };
-            
-            pagesData.push(pageData);
+            });
           } catch (err) {
             console.warn(`Failed to fetch page ${pageId}:`, err);
           }
         }
 
-        // Sort by updated_at (newest first)
         pagesData.sort((a, b) => b.updated_at - a.updated_at);
-        
         setPages(pagesData);
       } catch (err: any) {
-        console.error('Error fetching pages:', err);
         setError(err.message || 'Failed to load articles');
       } finally {
         setLoading(false);
@@ -129,36 +89,59 @@ export default function Dashboard() {
     fetchPages();
   }, []);
 
-  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-white antialiased">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <LoadingState />
+        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm text-gray-500">Loading stories...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-white antialiased">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <ErrorState error={error} />
+        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
+          <div className="text-center max-w-md px-4">
+            <p className="text-4xl mb-4">📚</p>
+            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white antialiased">
+    <div className="min-h-screen bg-white">
       <Navbar />
+      
+      <HeroSection />
 
-      <main className="max-w-4xl mx-auto px-6 sm:px-8 py-16">
-        <HeaderSection totalPages={pages.length} />
-        <StatsGrid />
-        <ArticlesList pages={pages} />
-        <InfoSection />
-      </main>
+      {/* Articles List */}
+      {pages.length > 0 ? (
+        <>
+          <section className="py-16 sm:py-20">
+            <div className="max-w-7xl mx-auto px-6 sm:px-8">
+              <div className="space-y-12">
+                {pages.map((article) => (
+                  <ArticleListItem key={article.page_id} article={article} />
+                ))}
+              </div>
+            </div>
+          </section>
+          
+          <FooterCTA totalStories={pages.length} />
+        </>
+      ) : (
+        <EmptyArticlesState />
+      )}
     </div>
   );
 }

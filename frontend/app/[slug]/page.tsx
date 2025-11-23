@@ -320,12 +320,12 @@ export default function PostPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
-          <div className="inline-block w-16 h-16 border-4 border-navy-600 border-t-neon-green rounded-full animate-spin"></div>
-          <p className="mt-6 text-lg text-gray-600 dark:text-gray-400 font-medium">
-            Loading article from blockchain and Walrus...
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-6 text-sm text-gray-500">
+            Loading story...
           </p>
         </div>
       </div>
@@ -334,22 +334,21 @@ export default function PostPage() {
 
   if (error || !page) {
     return (
-      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+      <div className="min-h-screen bg-white">
         <Navbar />
-        <div className="max-w-5xl mx-auto px-6 py-24 text-center">
-          <div className="text-8xl mb-8 opacity-50">😕</div>
-          <h1 className="text-4xl font-bold text-navy-800 dark:text-navy-200 mb-4">
-            {error ? 'Failed to Load Article' : 'Article Not Found'}
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+          <p className="text-4xl mb-4">📚</p>
+          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+            {error ? 'Failed to Load Story' : 'Story Not Found'}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-10 max-w-md mx-auto">
-            {error || "The article you're looking for doesn't exist or has been removed."}
+          <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
+            {error || "The story you're looking for doesn't exist or has been removed."}
           </p>
           <button
             onClick={() => router.push('/')}
-            className="modern-button inline-flex items-center gap-2"
+            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
           >
-            <span>←</span>
-            <span>Back to Dashboard</span>
+            ← Back to home
           </button>
         </div>
       </div>
@@ -357,162 +356,153 @@ export default function PostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-off-white dark:bg-navy-950">
+    <div className="min-h-screen bg-white">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
         {/* Back Button */}
         <button
           onClick={() => router.push('/')}
-          className="mb-8 inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm bg-navy-100 dark:bg-navy-800 text-navy-700 dark:text-navy-300 hover:bg-navy-200 dark:hover:bg-navy-700 transition-all hover:gap-3"
+          className="mb-12 text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2"
         >
           <span>←</span>
-          <span>All Articles</span>
+          <span className="text-sm">Back</span>
         </button>
 
         {/* Article Header */}
         <header className="mb-12">
-          <h1 className="text-6xl font-bold mb-6 leading-tight bg-gradient-to-r from-navy-800 to-navy-600 dark:from-navy-100 dark:to-navy-300 bg-clip-text text-transparent">
+          <h1 className="text-5xl sm:text-6xl font-serif font-bold text-gray-900 mb-8 leading-tight">
             {page.title}
           </h1>
           
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="provenance-chip">
-              <span className="text-navy-700 dark:text-navy-300">👤</span>
-              <span>{formatAddress(page.author)}</span>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 border-t border-b border-gray-200 py-4">
+            <div className="flex items-center gap-2">
+              <span>By</span>
+              <span className="font-mono text-xs">{formatAddress(page.author)}</span>
             </div>
-            <div className="provenance-chip">
-              <span className="text-navy-700 dark:text-navy-300">📅</span>
-              <span>{formatDate(page.updated_at)}</span>
-            </div>
-            <div className="provenance-chip">
-              <span className="text-navy-700 dark:text-navy-300">🔢</span>
-              <span>Version {page.version}</span>
-            </div>
+            <span>•</span>
+            <time dateTime={new Date(page.updated_at).toISOString()}>
+              {formatDate(page.updated_at)}
+            </time>
+            <span>•</span>
+            <span className="text-gray-400">v{page.version}</span>
           </div>
         </header>
 
         {/* Article Content */}
-        <article className="glass-card mb-12 overflow-hidden">
-          <div className="p-12 lg:p-16">
-            <div className="markdown-content">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {content}
-              </ReactMarkdown>
-            </div>
+        <div className="prose prose-lg max-w-none mb-16">
+          <div className="text-xl leading-relaxed text-gray-800 [&>h1]:text-4xl [&>h1]:font-serif [&>h1]:font-bold [&>h1]:mt-12 [&>h1]:mb-6 [&>h1]:leading-tight [&>h2]:text-3xl [&>h2]:font-serif [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-5 [&>h3]:text-2xl [&>h3]:font-serif [&>h3]:font-bold [&>h3]:mt-8 [&>h3]:mb-4 [&>p]:mb-8 [&>p]:leading-relaxed [&>ul]:mb-8 [&>ol]:mb-8 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:my-8 [&>pre]:bg-gray-50 [&>pre]:border [&>pre]:border-gray-200 [&>pre]:rounded-lg [&>pre]:p-6 [&>pre]:my-8 [&>pre]:overflow-x-auto [&>code]:bg-gray-100 [&>code]:px-2 [&>code]:py-1 [&>code]:rounded [&>code]:text-base [&>code]:font-mono">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
           </div>
-        </article>
+        </div>
 
         {/* Suggest Edit Button */}
         {page && (
           (() => {
-            // Show button if:
-            // Show if wallet connected and user is not the author
             const isAuthor = currentAccount && page.author.toLowerCase() === currentAccount.address.toLowerCase();
             const shouldShow = currentAccount && !isAuthor;
             
             return shouldShow ? (
-              <div className="mb-12 text-center">
+              <div className="mb-16 pb-16 border-b border-gray-200">
                 <button
                   onClick={handleOpenEditRequest}
-                  className="modern-button inline-flex items-center gap-2"
+                  className="px-6 py-3 border border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors duration-200 inline-flex items-center gap-2"
                 >
                   <span>✏️</span>
-                  <span>Suggest Edit</span>
+                  <span>Suggest an edit</span>
                 </button>
               </div>
             ) : null;
           })()
         )}
 
-        {/* Provenance Footer - Blockchain Info */}
-        <div className="glass-card p-8 mb-12">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-neon-green/20 to-neon-cyan/20 flex items-center justify-center border border-neon-green/30">
-              <span className="text-2xl">🔗</span>
-            </div>
-            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200">
-              Blockchain Provenance
-            </h2>
-          </div>
+        {/* Provenance Section */}
+        <div className="border-t border-gray-200 pt-12 mb-12">
+          <h2 className="text-2xl font-serif font-bold text-gray-900 mb-8">
+            Blockchain Provenance
+          </h2>
 
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                Page ID
+          <div className="bg-gray-50 rounded-lg p-8 mb-8">
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Page ID
+                </div>
+                <div className="font-mono text-lg font-bold text-gray-900">
+                  #{page.page_id}
+                </div>
               </div>
-              <div className="font-mono text-lg font-bold text-navy-700 dark:text-navy-300">
-                #{page.page_id}
-              </div>
-            </div>
 
-            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                Walrus BLOB ID
+              <div>
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Version
+                </div>
+                <div className="font-mono text-lg font-bold text-gray-900">
+                  v{page.version}
+                </div>
               </div>
-              <div className="font-mono text-sm text-navy-700 dark:text-navy-300 truncate">
-                {page.walrus_blob_id}
-              </div>
-            </div>
 
-            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                Created On
+              <div className="sm:col-span-2">
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Walrus Blob ID
+                </div>
+                <div className="font-mono text-sm text-gray-700 break-all">
+                  {page.walrus_blob_id}
+                </div>
               </div>
-              <div className="text-sm font-medium text-navy-700 dark:text-navy-300">
-                {formatDate(page.created_at)}
-              </div>
-            </div>
 
-            <div className="p-4 rounded-xl bg-gradient-to-br from-navy-50 to-navy-100 dark:from-navy-900 dark:to-navy-800">
-              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
-                Author Address
-              </div>
-              <div className="font-mono text-sm text-navy-700 dark:text-navy-300 truncate">
-                {page.author}
+              <div className="sm:col-span-2">
+                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
+                  Author Address
+                </div>
+                <div className="font-mono text-sm text-gray-700 break-all">
+                  {page.author}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="p-5 rounded-xl bg-gradient-to-r from-neon-green/10 to-neon-cyan/10 border border-neon-green/20">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-neon-green/20 flex items-center justify-center">
-                <span className="text-xl">✓</span>
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-200 flex items-center justify-center">
+                <span className="text-green-800">✓</span>
               </div>
               <div>
-                <h3 className="font-bold text-navy-800 dark:text-navy-200 mb-2">
-                  Authenticity Verified
+                <h3 className="font-bold text-gray-900 mb-2">
+                  Verified on Blockchain
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  This article is stored on the Sui blockchain. The version number and author address guarantee 
-                  content authenticity and immutability. Content is permanently stored on Walrus distributed storage.
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  This story is permanently stored on Sui blockchain with content on Walrus decentralized storage. 
+                  The author address and version number guarantee authenticity and immutability.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Back to Dashboard */}
-        <div className="text-center">
+        {/* Back Navigation */}
+        <div className="text-center pb-16">
           <button
             onClick={() => router.push('/')}
-            className="modern-button inline-flex items-center gap-2"
+            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200 inline-flex items-center gap-2"
           >
             <span>←</span>
-            <span>Back to All Articles</span>
+            <span>More stories</span>
           </button>
         </div>
-      </div>
+      </article>
 
       {/* Edit Request Modal */}
       {showEditRequestModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-navy-800 dark:text-navy-200 mb-4">
-              Suggest Edit
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">
+              Suggest an Edit
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Edit the content below. The author will review your changes before publishing.
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Make your changes below. The author will review your suggestion before publishing.
             </p>
             
             <div className="mb-6">
@@ -530,14 +520,14 @@ export default function PostPage() {
                   setEditRequestContent('');
                 }}
                 disabled={isSubmittingRequest}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-navy-800 hover:bg-gray-200 dark:hover:bg-navy-700 rounded-lg transition-colors disabled:opacity-50"
+                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-full transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitEditRequest}
                 disabled={isSubmittingRequest || !editRequestContent.trim()}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-neon-green hover:bg-neon-green/90 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-full transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmittingRequest ? (
                   <>
@@ -546,8 +536,7 @@ export default function PostPage() {
                   </>
                 ) : (
                   <>
-                    <span>✏️</span>
-                    <span>Submit Edit Request</span>
+                    <span>Submit suggestion</span>
                   </>
                 )}
               </button>
