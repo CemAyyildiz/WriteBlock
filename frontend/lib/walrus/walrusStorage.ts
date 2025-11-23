@@ -69,37 +69,46 @@ export class WalrusStorageClient implements IStorageClient {
   }
 
   /**
-   * Download content from Walrus storage via API route
-   * API route alternatif aggregator endpoint'lerini dener
+   * Download content from Walrus storage
+   * Walrus Sites'ta direkt aggregator'a gider, Vercel'de API route kullanır
    * @param blobId - Blob ID to download
    * @returns Content as string
    */
   async download(blobId: string): Promise<string> {
     try {
-      console.log('🐋 Downloading via API route:', blobId);
-      
-      // API route - Walrus Sites'ta Vercel backend'e yönlendir
-      const apiBase = typeof window !== 'undefined' && 
+      // Walrus Sites'ta mıyız kontrol et
+      const isWalrusSite = typeof window !== 'undefined' && 
         (window.location.hostname.includes('walrus.site') || 
          window.location.hostname.includes('walrus.space') ||
-         window.location.hostname.includes('trwal.app'))
-        ? 'https://write-block.vercel.app'
-        : '';
-      const response = await fetch(`${apiBase}/api/walrus/download?blobId=${encodeURIComponent(blobId)}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/plain, */*',
-        },
-      });
+         window.location.hostname.includes('trwal.app'));
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(`API download failed: ${errorData.error || response.statusText}`);
+      if (isWalrusSite) {
+        // Walrus Sites - Vercel API'yi proxy olarak kullan
+        console.log('🐋 Downloading via Vercel API proxy:', blobId);
+        const response = await fetch(`https://write-block.vercel.app/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(`API download failed: ${errorData.error || response.statusText}`);
+        }
+
+        const content = await response.text();
+        console.log('✅ Download successful via proxy, size:', content.length);
+        return content;
+      } else {
+        // Vercel - API route kullan
+        console.log('🐋 Downloading via API route:', blobId);
+        const response = await fetch(`/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(`API download failed: ${errorData.error || response.statusText}`);
+        }
+
+        const content = await response.text();
+        console.log('✅ Download successful, size:', content.length);
+        return content;
       }
-
-      const content = await response.text();
-      console.log('✅ Download successful, size:', content.length);
-      return content;
     } catch (error: any) {
       console.error('❌ Walrus download failed:', error);
       throw new Error(`Failed to download from Walrus: ${error.message}`);
