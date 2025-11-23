@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import 'easymde/dist/easymde.min.css';
 
 const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
@@ -176,7 +177,7 @@ export default function EditorForm({
           >
             {isUpdating ? (
               <>
-                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                <LoadingSpinner size="md" />
                 <span>Updating Article...</span>
               </>
             ) : (
@@ -194,7 +195,7 @@ export default function EditorForm({
           >
             {isSaving ? (
               <>
-                <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                <LoadingSpinner size="md" />
                 <span>Publishing...</span>
               </>
             ) : (

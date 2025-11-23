@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 import { useSidebar } from './SidebarLayout';
+import LogoAnimation from './LogoAnimation';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -51,15 +52,18 @@ export default function Sidebar() {
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <Link href="/" className="block overflow-hidden" onClick={() => setIsOpen(false)}>
             {isOpen ? (
-              <>
-                <h1 className="text-2xl font-serif font-bold text-gray-900 tracking-tight whitespace-nowrap">
-                  WriteBlock
-                </h1>
-                <p className="text-xs text-gray-500 mt-1">Decentralized Publishing</p>
-              </>
+              <div className="flex items-center gap-3">
+                <LogoAnimation size="sm" />
+                <div>
+                  <h1 className="text-2xl font-serif font-bold text-gray-900 tracking-tight whitespace-nowrap">
+                    WriteBlock
+                  </h1>
+                  <p className="text-xs text-gray-500 mt-1">Decentralized Publishing</p>
+                </div>
+              </div>
             ) : (
-              <div className="hidden lg:flex w-8 h-8 items-center justify-center bg-gray-900 text-white rounded-lg font-bold text-sm">
-                W
+              <div className="hidden lg:flex items-center justify-center">
+                <LogoAnimation size="sm" />
               </div>
             )}
           </Link>

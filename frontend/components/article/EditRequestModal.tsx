@@ -13,6 +13,8 @@ interface EditRequestModalProps {
   onSubmit: () => void;
 }
 
+import LoadingSpinner from '@/components/LoadingSpinner';
+
 export default function EditRequestModal({
   isOpen,
   content,
@@ -83,7 +85,7 @@ export default function EditRequestModal({
           >
             {isSubmitting ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <LoadingSpinner size="sm" />
                 <span>Submitting...</span>
               </>
             ) : (

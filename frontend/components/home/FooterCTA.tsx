@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import LogoAnimation from '@/components/LogoAnimation';
 
 interface FooterCTAProps {
   totalStories: number;
@@ -10,11 +11,14 @@ export default function FooterCTA({ totalStories }: FooterCTAProps) {
     <section className="border-t border-gray-200 bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 py-16 sm:py-20">
         <div className="max-w-4xl">
-          <div>
-            <h3 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+          <div className="flex items-center gap-4 mb-4">
+            <LogoAnimation size="md" />
+            <h3 className="text-3xl font-serif font-bold text-gray-900">
               Write on WriteBlock
             </h3>
-            
+          </div>
+          
+          <div>
             <p className="text-lg text-gray-600 leading-relaxed mb-8 max-w-3xl">
               Join a community of writers who believe in true ownership. 
               Your content is stored on Walrus and recorded on Sui blockchain—forever accessible, forever yours.

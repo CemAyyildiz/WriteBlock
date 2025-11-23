@@ -9,6 +9,8 @@ interface GrantAuthorFormProps {
   onSubmit: () => void;
 }
 
+import LoadingSpinner from '@/components/LoadingSpinner';
+
 export default function GrantAuthorForm({
   newAuthorName,
   newAuthorAddress,
@@ -65,7 +67,7 @@ export default function GrantAuthorForm({
         >
           {isGranting ? (
             <>
-              <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+              <LoadingSpinner size="md" />
               <span>Authorizing...</span>
             </>
           ) : (

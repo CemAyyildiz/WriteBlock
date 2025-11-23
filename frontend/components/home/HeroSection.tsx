@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import LogoAnimation from '@/components/LogoAnimation';
 
 export default function HeroSection() {
   return (
@@ -12,9 +13,12 @@ export default function HeroSection() {
             Decentralized Publishing
           </Badge>
           
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-serif font-bold text-gray-900 mb-8 tracking-tight leading-[0.95]">
-            WriteBlock
-          </h1>
+          <div className="flex items-center gap-6 mb-8">
+            <LogoAnimation size="lg" />
+            <h1 className="text-6xl sm:text-7xl lg:text-8xl font-serif font-bold text-gray-900 tracking-tight leading-[0.95]">
+              WriteBlock
+            </h1>
+          </div>
           
           <p className="text-xl sm:text-2xl text-gray-600 leading-relaxed mb-12 font-light max-w-3xl">
             A new kind of publishing platform where your words live forever on the blockchain. 

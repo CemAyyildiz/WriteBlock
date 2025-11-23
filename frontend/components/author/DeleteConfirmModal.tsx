@@ -7,6 +7,8 @@ interface DeleteConfirmModalProps {
   onCancel: () => void;
 }
 
+import LoadingSpinner from '@/components/LoadingSpinner';
+
 export default function DeleteConfirmModal({
   page,
   isDeleting,
@@ -54,7 +56,7 @@ export default function DeleteConfirmModal({
           >
             {isDeleting ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <LoadingSpinner size="sm" />
                 <span>Deleting...</span>
               </>
             ) : (

@@ -7,6 +7,7 @@ import ArticleHeader from '@/components/article/ArticleHeader';
 import ArticleContent from '@/components/article/ArticleContent';
 import ProvenanceSection from '@/components/article/ProvenanceSection';
 import EditRequestModal from '@/components/article/EditRequestModal';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import { getBlockchainClient, getStorageClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
 import { useCurrentAccount } from '@mysten/dapp-kit';
@@ -216,9 +217,8 @@ export default function PostPage() {
     return (
       <>
         <Sidebar />
-        <div className="max-w-3xl mx-auto px-6 py-24 text-center bg-white pt-16 lg:pt-0">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-6 text-sm text-gray-500">Loading story...</p>
+        <div className="max-w-3xl mx-auto px-6 py-24 bg-white pt-16 lg:pt-0">
+          <LoadingAnimation message="Loading story..." size="lg" />
         </div>
       </>
     );

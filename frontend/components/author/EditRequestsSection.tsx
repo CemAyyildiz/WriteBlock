@@ -1,5 +1,6 @@
 import { PageMetadata } from '@/types';
 import { formatAddress, formatDate } from '@/lib/utils/format';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface EditRequestsSectionProps {
   pages: PageMetadata[];
@@ -83,7 +84,7 @@ export default function EditRequestsSection({
                     >
                       {processingRequest?.pageId === page.page_id && processingRequest?.requestId === request.requestId ? (
                         <>
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <LoadingSpinner size="xs" />
                           <span>Processing...</span>
                         </>
                       ) : (

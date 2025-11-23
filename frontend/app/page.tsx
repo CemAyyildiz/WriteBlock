@@ -6,6 +6,7 @@ import HeroSection from '@/components/home/HeroSection';
 import ArticleListItem from '@/components/home/ArticleListItem';
 import EmptyArticlesState from '@/components/home/EmptyArticlesState';
 import FooterCTA from '@/components/home/FooterCTA';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import { usePages } from '@/lib/hooks/usePageData';
 
 export default function Dashboard() {
@@ -20,10 +21,7 @@ export default function Dashboard() {
       <>
         <Sidebar />
         <div className="flex items-center justify-center min-h-screen bg-white pt-16 lg:pt-0">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm text-gray-500">Loading stories...</p>
-          </div>
+          <LoadingAnimation message="Loading stories..." size="lg" />
         </div>
       </>
     );
