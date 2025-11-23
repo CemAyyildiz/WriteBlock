@@ -1,16 +1,11 @@
 import { Author } from '@/types';
+import { formatAddress, formatDate } from '@/lib/utils/format';
 
 interface AuthorsListProps {
   authors: Author[];
-  formatAddress: (address: string) => string;
-  formatDate: (timestamp: number) => string;
 }
 
-export default function AuthorsList({
-  authors,
-  formatAddress,
-  formatDate,
-}: AuthorsListProps) {
+export default function AuthorsList({ authors }: AuthorsListProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="p-6 border-b border-gray-200 bg-gray-50">

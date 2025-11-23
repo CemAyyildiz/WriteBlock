@@ -1,3 +1,5 @@
+import { formatAddress, formatDate } from '@/lib/utils/format';
+
 interface ArticleHeaderProps {
   title: string;
   author: string;
@@ -7,17 +9,6 @@ interface ArticleHeaderProps {
 }
 
 export default function ArticleHeader({ title, author, updatedAt, version, onBack }: ArticleHeaderProps) {
-  const formatAddress = (address: string) => {
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
 
   return (
     <>

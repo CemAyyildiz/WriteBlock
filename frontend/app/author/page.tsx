@@ -10,14 +10,19 @@ import EditorForm from '@/components/author/EditorForm';
 import EditorSidebar from '@/components/author/EditorSidebar';
 import DeleteConfirmModal from '@/components/author/DeleteConfirmModal';
 import ViewEditRequestModal from '@/components/author/ViewEditRequestModal';
-import { getStorageClient, getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
+import { getStorageClient, getBlockchainClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
+import { useUserPages, useEditRequests } from '@/lib/hooks/usePageData';
+import { generateSlug } from '@/lib/utils/format';
 
 export default function AuthorPage() {
   const router = useRouter();
-  const [pages, setPages] = useState<PageMetadata[]>([]);
-  const [loadingPages, setLoadingPages] = useState(false);
+  const currentAccount = useCurrentAccount();
+  const { authorCapId, registryId } = useWalletCapabilities();
+  const { pages, fetchUserPages } = useUserPages();
+  const { editRequests, fetchEditRequestsContent } = useEditRequests();
   
   // Editor states
   const [title, setTitle] = useState('');
@@ -38,181 +43,16 @@ export default function AuthorPage() {
   const [deleteConfirmPage, setDeleteConfirmPage] = useState<PageMetadata | null>(null);
   
   // Edit Requests states
-  const [editRequests, setEditRequests] = useState<Map<number, any[]>>(new Map());
-  const [loadingRequests, setLoadingRequests] = useState<Set<number>>(new Set());
   const [processingRequest, setProcessingRequest] = useState<{ pageId: number; requestId: number } | null>(null);
   const [viewingRequest, setViewingRequest] = useState<{ page: PageMetadata; request: any } | null>(null);
   const [loadingRequestContent, setLoadingRequestContent] = useState(false);
 
-  // Sui wallet integration
-  const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const [authorCapId, setAuthorCapId] = useState<string | null>(null);
-  const [registryId, setRegistryId] = useState<string | null>(null);
-  const config = getProviderConfig();
-
-  // Initialize Sui wallet connection
+  // Fetch user pages on mount and when wallet connects
   useEffect(() => {
-    if (config.wallet === 'sui' && currentAccount) {
-      initializeSuiWallet({
-        account: currentAccount,
-        connect: async () => {},
-        disconnect: async () => {},
-        signAndExecute: async (tx) => {
-          return new Promise((resolve, reject) => {
-            signAndExecuteTransaction(
-              { transaction: tx },
-              {
-                onSuccess: (result) => resolve({ digest: result.digest }),
-                onError: (error) => reject(error),
-              }
-            );
-          });
-        },
-      });
-
-      const fetchCapabilities = async () => {
-        try {
-          const wallet = getWalletClient();
-          const caps = await wallet.getUserCapabilities(currentAccount.address);
-          
-          if (caps.authorCapId) {
-            setAuthorCapId(caps.authorCapId);
-          } else if (caps.adminCapId) {
-            alert('⚠️ You have Admin capability but need Author capability to publish articles.\n\nPlease go to Admin Panel and grant yourself Author capability first!');
-          }
-
-          const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-          if (envRegistryId) {
-            setRegistryId(envRegistryId);
-          }
-
-          await fetchUserPages(currentAccount.address);
-        } catch (error) {
-          console.error('Error fetching capabilities:', error);
-        }
-      };
-
-      fetchCapabilities();
+    if (currentAccount?.address) {
+      fetchUserPages(currentAccount.address);
     }
-  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
-
-  // Fetch user's pages
-  const fetchUserPages = async (userAddress: string) => {
-    try {
-      setLoadingPages(true);
-      const blockchainClient = getBlockchainClient();
-      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-
-      if (!envRegistryId) {
-        console.warn('Registry ID not configured');
-        return;
-      }
-
-      const pageIds = await blockchainClient.getAllPages(envRegistryId);
-      const userPages: PageMetadata[] = [];
-      
-      for (const pageId of pageIds) {
-        try {
-          const metadata = await blockchainClient.getPageMetadata(pageId);
-          
-          if (metadata.author.toLowerCase() === userAddress.toLowerCase() && !metadata.deleted) {
-            let title = `Article #${metadata.pageId}`;
-            let excerpt = 'Click to view content';
-            let slug = `page-${metadata.pageId}`;
-            let markdownContent = '';
-            
-            try {
-              const storageClient = getStorageClient();
-              const blobContent = await storageClient.download(metadata.walrusBlobId);
-              
-              try {
-                const blobData = JSON.parse(blobContent);
-                title = blobData.title || title;
-                excerpt = blobData.excerpt || excerpt;
-                slug = blobData.slug || slug;
-                markdownContent = blobData.content || blobContent;
-              } catch {
-                const titleMatch = blobContent.match(/^#\s+(.+)$/m);
-                if (titleMatch) title = titleMatch[1];
-                const contentWithoutTitle = blobContent.replace(/^#\s+.+$/m, '').trim();
-                const firstParagraph = contentWithoutTitle.split('\n\n')[0];
-                excerpt = firstParagraph ? (firstParagraph.substring(0, 150) + (firstParagraph.length > 150 ? '...' : '')) : excerpt;
-                markdownContent = blobContent;
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch content for page ${metadata.pageId}:`, err);
-            }
-            
-            const pageData: PageMetadata = {
-              page_id: metadata.pageId,
-              walrus_blob_id: metadata.walrusBlobId,
-              version: metadata.version,
-              author: metadata.author,
-              created_at: metadata.createdAt,
-              updated_at: metadata.updatedAt,
-              slug,
-              title,
-              excerpt,
-              markdown_content: markdownContent,
-            };
-            
-            userPages.push(pageData);
-            
-            try {
-              const requests = await blockchainClient.getEditRequests(pageId);
-              if (requests.length > 0) {
-                await fetchEditRequestsContent(metadata.pageId, requests);
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch edit requests for page ${metadata.pageId}:`, err);
-            }
-          }
-        } catch (err) {
-          console.warn(`Failed to fetch page ${pageId}:`, err);
-        }
-      }
-
-      userPages.sort((a, b) => b.updated_at - a.updated_at);
-      setPages(userPages);
-    } catch (error) {
-      console.error('Error fetching user pages:', error);
-    } finally {
-      setLoadingPages(false);
-    }
-  };
-
-  // Fetch edit requests with content
-  const fetchEditRequestsContent = async (pageId: number, requests: any[]) => {
-    const storageClient = getStorageClient();
-    const requestsWithContent = await Promise.all(
-      requests.map(async (req) => {
-        try {
-          if (!req.newWalrusBlobId || req.newWalrusBlobId.trim() === '') {
-            return { ...req, requester: req.requester || 'Unknown' };
-          }
-          const blobContent = await storageClient.download(req.newWalrusBlobId);
-          const blobData = JSON.parse(blobContent);
-          return {
-            ...req,
-            requester: req.requester || 'Unknown',
-            title: blobData.title,
-            slug: blobData.slug,
-            excerpt: blobData.excerpt,
-            content: blobData.content,
-          };
-        } catch (error) {
-          return { ...req, requester: req.requester || 'Unknown' };
-        }
-      })
-    );
-    
-    setEditRequests(prev => {
-      const newMap = new Map(prev);
-      newMap.set(pageId, requestsWithContent);
-      return newMap;
-    });
-  };
+  }, [currentAccount, fetchUserPages]);
 
   // Slug validation with debounce
   useEffect(() => {
@@ -270,14 +110,7 @@ export default function AuthorPage() {
   // Auto-generate slug from title
   useEffect(() => {
     if (!editingPage && title && !slug) {
-      const generatedSlug = title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .substring(0, 100);
-      setSlug(generatedSlug);
+      setSlug(generateSlug(title));
     }
   }, [title, slug, editingPage]);
 
@@ -340,7 +173,7 @@ export default function AuthorPage() {
       setExcerpt('');
       setContent('');
 
-      if (currentAccount) {
+      if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
 
@@ -423,7 +256,7 @@ export default function AuthorPage() {
       setExcerpt('');
       setContent('');
 
-      if (currentAccount) {
+      if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
     } catch (error) {
@@ -497,7 +330,7 @@ export default function AuthorPage() {
       console.log('✅ Page deleted:', txResult.txHash);
       alert('✅ Article deleted successfully!');
 
-      if (currentAccount) {
+      if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
 
@@ -550,7 +383,7 @@ export default function AuthorPage() {
       console.log('✅ Edit request approved:', txResult.txHash);
       alert('✅ Edit request approved successfully!');
 
-      if (currentAccount) {
+      if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
     } catch (error) {
@@ -601,7 +434,7 @@ export default function AuthorPage() {
       console.log('✅ Edit request rejected:', txResult.txHash);
       alert('✅ Edit request rejected.');
 
-      if (currentAccount) {
+      if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
     } catch (error) {
@@ -637,18 +470,6 @@ export default function AuthorPage() {
     } else {
       setViewingRequest({ page, request });
     }
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
   };
 
   if (!currentAccount) {
@@ -718,15 +539,12 @@ export default function AuthorPage() {
             onViewRequest={handleViewRequest}
             onApproveRequest={handleApproveRequest}
             onRejectRequest={handleRejectRequest}
-            formatAddress={formatAddress}
-            formatDate={formatDate}
           />
 
           <UserArticlesList
             pages={pages}
             onEdit={handleEdit}
             onDelete={(page) => setDeleteConfirmPage(page)}
-            formatDate={formatDate}
           />
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -767,8 +585,6 @@ export default function AuthorPage() {
           <ViewEditRequestModal
             viewingRequest={viewingRequest}
             onClose={() => setViewingRequest(null)}
-            formatAddress={formatAddress}
-            formatDate={formatDate}
           />
         </div>
       </main>

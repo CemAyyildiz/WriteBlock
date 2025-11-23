@@ -10,8 +10,10 @@ import HowItWorksSection from '@/components/admin/HowItWorksSection';
 import SuccessMessage from '@/components/admin/SuccessMessage';
 import AuthorsList from '@/components/admin/AuthorsList';
 import { Author } from '@/types';
-import { getBlockchainClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { getBlockchainClient, getWalletClient, getProviderConfig } from '@/lib/client';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
+import { formatAddress, formatDate, isValidSuiAddress } from '@/lib/utils/format';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -22,13 +24,11 @@ export default function AdminPage() {
   const [grantSuccess, setGrantSuccess] = useState(false);
   const [txHash, setTxHash] = useState('');
 
-  // Sui wallet integration
   const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const [adminCapId, setAdminCapId] = useState<string | null>(null);
+  const { adminCapId } = useWalletCapabilities();
   const config = getProviderConfig();
 
-  // Fetch authors from blockchain (admin'in transaction history'sinden)
+  // Fetch authors from blockchain
   useEffect(() => {
     const fetchAuthors = async () => {
       try {
@@ -47,7 +47,7 @@ export default function AdminPage() {
         
         const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
           address: cap.author,
-          name: `Author ${cap.author.substring(0, 6)}...${cap.author.substring(cap.author.length - 4)}`,
+          name: `Author ${formatAddress(cap.author)}`,
           granted_at: cap.issued_at,
         }));
         
@@ -62,64 +62,13 @@ export default function AdminPage() {
     }
   }, [adminCapId]);
 
-  // Initialize Sui wallet connection
-  useEffect(() => {
-    if (currentAccount) {
-      initializeSuiWallet({
-        account: currentAccount,
-        connect: async () => {},
-        disconnect: async () => {},
-        signAndExecute: async (tx) => {
-          return new Promise((resolve, reject) => {
-            signAndExecuteTransaction(
-              { transaction: tx },
-              {
-                onSuccess: (result) => resolve({ digest: result.digest }),
-                onError: (error) => reject(error),
-              }
-            );
-          });
-        },
-      });
-
-      const fetchCapabilities = async () => {
-        try {
-          const envAdminCapId = process.env.NEXT_PUBLIC_ADMIN_CAP_ID;
-          if (envAdminCapId) {
-            setAdminCapId(envAdminCapId);
-            console.log('✅ Using Admin Capability from .env.local:', envAdminCapId);
-            return;
-          }
-          
-          const wallet = getWalletClient();
-          const caps = await wallet.getUserCapabilities(currentAccount.address);
-          
-          if (caps.adminCapId) {
-            setAdminCapId(caps.adminCapId);
-            console.log('✅ Admin capability found from wallet:', caps.adminCapId);
-          } else {
-            console.warn('⚠️ No admin capability found. Make sure NEXT_PUBLIC_ADMIN_CAP_ID is set in .env.local');
-          }
-        } catch (error) {
-          console.error('Error fetching capabilities:', error);
-        }
-      };
-
-      fetchCapabilities();
-    }
-  }, [currentAccount, signAndExecuteTransaction, config.wallet]);
-
-  const validateAddress = (address: string) => {
-    return address.startsWith('0x') && address.length === 66;
-  };
-
   const handleGrantCapability = async () => {
     if (!newAuthorAddress || !newAuthorName) {
       alert('Please fill all fields');
       return;
     }
 
-    if (!validateAddress(newAuthorAddress)) {
+    if (!isValidSuiAddress(newAuthorAddress)) {
       alert('Invalid Sui address format. Address must start with 0x and be 66 characters long.');
       return;
     }
@@ -175,7 +124,7 @@ export default function AdminPage() {
             const authorCapabilities = await wallet.getAuthorCapabilities(packageId);
             const authorsData: Author[] = authorCapabilities.map((cap: any) => ({
               address: cap.author,
-              name: `Author ${cap.author.substring(0, 6)}...${cap.author.substring(cap.author.length - 4)}`,
+              name: `Author ${formatAddress(cap.author)}`,
               granted_at: cap.issued_at,
             }));
             
@@ -194,18 +143,6 @@ export default function AdminPage() {
     } finally {
       setIsGranting(false);
     }
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.substring(0, 10)}...${address.substring(address.length - 8)}`;
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
   };
 
   if (!currentAccount) {
@@ -270,7 +207,6 @@ export default function AdminPage() {
           <AdminInfoCard
             currentAccount={currentAccount}
             adminCapId={adminCapId}
-            formatAddress={formatAddress}
           />
 
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
@@ -290,11 +226,7 @@ export default function AdminPage() {
             <SuccessMessage txHash={txHash} />
           )}
 
-          <AuthorsList
-            authors={authors}
-            formatAddress={formatAddress}
-            formatDate={formatDate}
-          />
+          <AuthorsList authors={authors} />
         </div>
       </main>
     </>

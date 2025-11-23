@@ -1,93 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import HeroSection from '@/components/home/HeroSection';
 import ArticleListItem from '@/components/home/ArticleListItem';
 import EmptyArticlesState from '@/components/home/EmptyArticlesState';
 import FooterCTA from '@/components/home/FooterCTA';
-import { getBlockchainClient, getStorageClient } from '@/lib/client';
-import { PageMetadata } from '@/types';
+import { usePages } from '@/lib/hooks/usePageData';
 
 export default function Dashboard() {
-  const [pages, setPages] = useState<PageMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { pages, loading, error, fetchPages } = usePages();
 
   useEffect(() => {
-    const fetchPages = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const blockchainClient = getBlockchainClient();
-        const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-
-        if (!registryId) {
-          throw new Error('Registry ID not configured');
-        }
-
-        const pageIds = await blockchainClient.getAllPages(registryId);
-        const pagesData: PageMetadata[] = [];
-        const storageClient = getStorageClient();
-
-        for (const pageId of pageIds) {
-          try {
-            const metadata = await blockchainClient.getPageMetadata(pageId);
-            if (metadata.deleted) continue;
-            
-            let title = `Article #${metadata.pageId}`;
-            let excerpt = `Published on ${new Date(metadata.updatedAt).toLocaleDateString()}`;
-            let slug = `page-${metadata.pageId}`;
-            
-            try {
-              const blobContent = await storageClient.download(metadata.walrusBlobId);
-              try {
-                const blobData = JSON.parse(blobContent);
-                title = blobData.title || title;
-                excerpt = blobData.excerpt || excerpt;
-                slug = blobData.slug || slug;
-              } catch {
-                const markdownContent = blobContent;
-                const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
-                if (titleMatch) title = titleMatch[1];
-                
-                const contentWithoutTitle = markdownContent.replace(/^#\s+.+$/m, '').trim();
-                const lines = contentWithoutTitle.split('\n').filter(line => line.trim());
-                const firstParagraph = lines[0] || '';
-                excerpt = firstParagraph.substring(0, 200) + (firstParagraph.length > 200 ? '...' : '');
-              }
-            } catch {
-              excerpt = `Content stored on decentralized storage`;
-            }
-            
-            pagesData.push({
-              page_id: metadata.pageId,
-              walrus_blob_id: metadata.walrusBlobId,
-              version: metadata.version,
-              author: metadata.author,
-              created_at: metadata.createdAt,
-              updated_at: metadata.updatedAt,
-              slug,
-              title,
-              excerpt,
-            });
-          } catch (err) {
-            console.warn(`Failed to fetch page ${pageId}:`, err);
-          }
-        }
-
-        pagesData.sort((a, b) => b.updated_at - a.updated_at);
-        setPages(pagesData);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load articles');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPages();
-  }, []);
+  }, [fetchPages]);
 
   if (loading) {
     return (

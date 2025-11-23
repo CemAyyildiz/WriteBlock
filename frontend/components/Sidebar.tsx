@@ -3,17 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
-import { useEffect, useState } from 'react';
 import { Home, PenTool, Shield, User, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { getWalletClient } from '@/lib/client';
+import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 import { useSidebar } from './SidebarLayout';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const currentAccount = useCurrentAccount();
-  const [userRole, setUserRole] = useState<string>('viewer');
+  const { role: userRole } = useWalletCapabilities();
   const { isOpen, setIsOpen } = useSidebar();
 
   const isActive = (path: string) => {
@@ -22,34 +21,6 @@ export default function Sidebar() {
     }
     return pathname.startsWith(path);
   };
-
-  // Fetch user capabilities when wallet is connected
-  useEffect(() => {
-    async function fetchCapabilities() {
-      if (!currentAccount?.address) {
-        setUserRole('viewer');
-        return;
-      }
-
-      try {
-        const wallet = getWalletClient();
-        const caps = await wallet.getUserCapabilities(currentAccount.address);
-        
-        if (caps.hasAdminCap) {
-          setUserRole('admin');
-        } else if (caps.hasAuthorCap) {
-          setUserRole('author');
-        } else {
-          setUserRole('viewer');
-        }
-      } catch (error) {
-        console.error('Error fetching capabilities:', error);
-        setUserRole('viewer');
-      }
-    }
-
-    fetchCapabilities();
-  }, [currentAccount?.address]);
 
   return (
     <>

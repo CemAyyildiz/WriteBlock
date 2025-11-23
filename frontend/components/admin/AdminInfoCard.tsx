@@ -1,13 +1,13 @@
+import { formatAddress } from '@/lib/utils/format';
+
 interface AdminInfoCardProps {
   currentAccount: any;
   adminCapId: string | null;
-  formatAddress: (address: string) => string;
 }
 
 export default function AdminInfoCard({
   currentAccount,
   adminCapId,
-  formatAddress,
 }: AdminInfoCardProps) {
   return (
     <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 mb-8">

@@ -1,4 +1,5 @@
 import { PageMetadata } from '@/types';
+import { formatAddress, formatDate } from '@/lib/utils/format';
 
 interface EditRequestsSectionProps {
   pages: PageMetadata[];
@@ -8,8 +9,6 @@ interface EditRequestsSectionProps {
   onViewRequest: (page: PageMetadata, request: any) => void;
   onApproveRequest: (pageId: number, requestId: number) => void;
   onRejectRequest: (pageId: number, requestId: number) => void;
-  formatAddress: (address: string) => string;
-  formatDate: (timestamp: number) => string;
 }
 
 export default function EditRequestsSection({
@@ -20,8 +19,6 @@ export default function EditRequestsSection({
   onViewRequest,
   onApproveRequest,
   onRejectRequest,
-  formatAddress,
-  formatDate,
 }: EditRequestsSectionProps) {
   const allRequests: Array<{ page: PageMetadata; requests: any[] }> = [];
   

@@ -1,19 +1,16 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { PageMetadata } from '@/types';
+import { formatAddress, formatDate } from '@/lib/utils/format';
 
 interface ViewEditRequestModalProps {
   viewingRequest: { page: PageMetadata; request: any } | null;
   onClose: () => void;
-  formatAddress: (address: string) => string;
-  formatDate: (timestamp: number) => string;
 }
 
 export default function ViewEditRequestModal({
   viewingRequest,
   onClose,
-  formatAddress,
-  formatDate,
 }: ViewEditRequestModalProps) {
   if (!viewingRequest) return null;
 

@@ -7,9 +7,10 @@ import ArticleHeader from '@/components/article/ArticleHeader';
 import ArticleContent from '@/components/article/ArticleContent';
 import ProvenanceSection from '@/components/article/ProvenanceSection';
 import EditRequestModal from '@/components/article/EditRequestModal';
-import { getBlockchainClient, getStorageClient, initializeSuiWallet } from '@/lib/client';
+import { getBlockchainClient, getStorageClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 
 export default function PostPage() {
   const params = useParams();
@@ -26,31 +27,8 @@ export default function PostPage() {
   const [editRequestContent, setEditRequestContent] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   
-  // Sui wallet integration
   const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  
-  // Initialize wallet for edit requests
-  useEffect(() => {
-    if (currentAccount) {
-      initializeSuiWallet({
-        account: currentAccount,
-        connect: async () => {},
-        disconnect: async () => {},
-        signAndExecute: async (tx) => {
-          return new Promise((resolve, reject) => {
-            signAndExecuteTransaction(
-              { transaction: tx },
-              {
-                onSuccess: (result) => resolve({ digest: result.digest }),
-                onError: (error) => reject(error),
-              }
-            );
-          });
-        },
-      });
-    }
-  }, [currentAccount, signAndExecuteTransaction]);
+  useWalletCapabilities(); // Initialize wallet connection
 
   useEffect(() => {
     const fetchPageContent = async () => {

@@ -1,17 +1,16 @@
 import { PageMetadata } from '@/types';
+import { formatDate } from '@/lib/utils/format';
 
 interface UserArticlesListProps {
   pages: PageMetadata[];
   onEdit: (page: PageMetadata) => void;
   onDelete: (page: PageMetadata) => void;
-  formatDate: (timestamp: number) => string;
 }
 
 export default function UserArticlesList({
   pages,
   onEdit,
   onDelete,
-  formatDate,
 }: UserArticlesListProps) {
   if (pages.length === 0) return null;
 
