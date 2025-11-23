@@ -132,8 +132,8 @@ export class WalrusStorageClient implements IStorageClient {
       return {
         blobId,
         size,
+        createdAt: Date.now(), // Walrus doesn't provide this, using current time
         contentType,
-        uploadedAt: Date.now(), // Walrus doesn't provide this, using current time
       };
     } catch (error: any) {
       console.error('Error getting Walrus metadata:', error);
