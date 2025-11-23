@@ -39,7 +39,7 @@ export class WalrusStorageClient implements IStorageClient {
         (window.location.hostname.includes('walrus.site') || 
          window.location.hostname.includes('walrus.space') ||
          window.location.hostname.includes('trwal.app'))
-        ? 'https://write-block.vercel.app'
+        ? 'https://writeblock.vercel.app'
         : '';
       const response = await fetch(`${apiBase}/api/walrus/upload`, {
         method: 'POST',
@@ -85,7 +85,7 @@ export class WalrusStorageClient implements IStorageClient {
       if (isWalrusSite) {
         // Walrus Sites - Vercel API'yi proxy olarak kullan
         console.log('🐋 Downloading via Vercel API proxy:', blobId);
-        const response = await fetch(`https://write-block.vercel.app/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
+        const response = await fetch(`https://writeblock.vercel.app/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: response.statusText }));
