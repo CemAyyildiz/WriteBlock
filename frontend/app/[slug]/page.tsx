@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ArticleHeader from '@/components/article/ArticleHeader';
 import ArticleContent from '@/components/article/ArticleContent';
-import ProvenanceSection from '@/components/article/ProvenanceSection';
 import EditRequestModal from '@/components/article/EditRequestModal';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { getBlockchainClient, getStorageClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
+import { formatAddress, formatDate } from '@/lib/utils/format';
 
 export default function PostPage() {
   const params = useParams();
@@ -256,49 +256,139 @@ export default function PostPage() {
     <>
       <Sidebar />
 
-      <main className="bg-white pt-16 lg:pt-0">
-        <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
-          <ArticleHeader
-            title={page.title || `Article #${page.page_id}`}
-            author={page.author}
-            updatedAt={page.updated_at}
-            version={page.version}
-            onBack={() => router.push('/')}
-          />
+      <main className="bg-gradient-to-b from-gray-50 to-white min-h-screen pt-16 lg:pt-0">
+        {/* Back button - minimal and clean */}
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-8 lg:pt-12">
+          <button
+            onClick={() => router.push('/')}
+            className="text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2 text-sm group"
+          >
+            <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span>
+            <span>Back to articles</span>
+          </button>
+        </div>
 
-          <ArticleContent content={content} />
+        {/* Two-column layout */}
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
+            
+            {/* Main content column */}
+            <article className="lg:col-span-8 xl:col-span-8">
+              {/* Article header */}
+              <header className="mb-12 pb-8 border-b-2 border-gray-200">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-gray-900 mb-6 leading-[1.1]">
+                  {page.title || `Article #${page.page_id}`}
+                </h1>
+                
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">By</span>
+                    <span className="font-mono text-xs bg-white border border-gray-200 px-3 py-1 rounded-full">
+                      {formatAddress(page.author)}
+                    </span>
+                  </div>
+                  <span className="text-gray-300">•</span>
+                  <time dateTime={new Date(page.updated_at).toISOString()} className="text-gray-600">
+                    {formatDate(page.updated_at)}
+                  </time>
+                  <span className="text-gray-300">•</span>
+                  <span className="font-mono text-xs text-gray-500">v{page.version}</span>
+                </div>
+              </header>
 
-          {/* Suggest Edit Button */}
-          {canSuggestEdit && (
-            <div className="mb-16 pb-16 border-b border-gray-200">
-              <button
-                onClick={handleOpenEditRequest}
-                className="px-6 py-3 border border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors duration-200 inline-flex items-center gap-2"
-              >
-                <span>✏️</span>
-                <span>Suggest an edit</span>
-              </button>
-            </div>
-          )}
+              {/* Content - Clean and focused */}
+              <ArticleContent content={content} />
+            </article>
 
-          <ProvenanceSection
-            pageId={page.page_id}
-            version={page.version}
-            walrusBlobId={page.walrus_blob_id}
-            author={page.author}
-          />
+            {/* Right sidebar - All metadata and provenance */}
+            <aside className="hidden lg:block lg:col-span-4 xl:col-span-4">
+              <div className="sticky top-24 space-y-6">
+                
+                {/* Article metadata card */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
+                    Article Information
+                  </h3>
+                  <dl className="space-y-4 text-sm">
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Page ID</dt>
+                      <dd className="font-mono text-gray-900">#{page.page_id}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Version</dt>
+                      <dd className="font-mono text-gray-900">v{page.version}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Walrus Blob ID</dt>
+                      <dd className="font-mono text-xs text-gray-900 break-all leading-relaxed">
+                        {page.walrus_blob_id}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Author</dt>
+                      <dd className="font-mono text-xs text-gray-900 break-all">
+                        {page.author}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Published</dt>
+                      <dd className="text-gray-900">{formatDate(page.created_at)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-500 font-medium mb-1">Last Updated</dt>
+                      <dd className="text-gray-900">{formatDate(page.updated_at)}</dd>
+                    </div>
+                  </dl>
+                </div>
 
-          {/* Back Navigation */}
-          <div className="text-center pb-16">
-            <button
-              onClick={() => router.push('/')}
-              className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200 inline-flex items-center gap-2"
-            >
-              <span>←</span>
-              <span>More stories</span>
-            </button>
+                {/* Verification badge */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl">🔒</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900 mb-1">
+                        Verified on Blockchain
+                      </h3>
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        This article is permanently stored on Walrus decentralized storage and verified on Sui blockchain.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-blue-200 space-y-2">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">Storage:</span>
+                      <span className="font-mono text-gray-700">Walrus</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500">Blockchain:</span>
+                      <span className="font-mono text-gray-700">Sui</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="space-y-3">
+                  {canSuggestEdit && (
+                    <button
+                      onClick={handleOpenEditRequest}
+                      className="w-full px-4 py-3 bg-white border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-gray-900 hover:text-white transition-all duration-200 text-sm inline-flex items-center justify-center gap-2"
+                    >
+                      <span>✏️</span>
+                      <span>Suggest Edit</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push('/')}
+                    className="w-full px-4 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 text-sm inline-flex items-center justify-center gap-2"
+                  >
+                    <span>←</span>
+                    <span>More Articles</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
           </div>
-        </article>
+        </div>
 
         <EditRequestModal
           isOpen={showEditRequestModal}

@@ -11,36 +11,35 @@ interface ArticleHeaderProps {
 export default function ArticleHeader({ title, author, updatedAt, version, onBack }: ArticleHeaderProps) {
 
   return (
-    <>
+    <header>
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="mb-12 text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2"
+        className="mb-6 text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2 text-sm"
       >
         <span>←</span>
-        <span className="text-sm">Back</span>
+        <span>Back to articles</span>
       </button>
 
-      {/* Article Header */}
-      <header className="mb-12">
-        <h1 className="text-5xl sm:text-6xl font-serif font-bold text-gray-900 mb-8 leading-tight">
-          {title}
-        </h1>
-        
-        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 border-t border-b border-gray-200 py-4">
-          <div className="flex items-center gap-2">
-            <span>By</span>
-            <span className="font-mono text-xs">{formatAddress(author)}</span>
-          </div>
-          <span>•</span>
-          <time dateTime={new Date(updatedAt).toISOString()}>
-            {formatDate(updatedAt)}
-          </time>
-          <span>•</span>
-          <span className="text-gray-400">v{version}</span>
+      {/* Article Title - Academic style */}
+      <h1 className="text-4xl sm:text-5xl font-serif font-bold text-gray-900 mb-6 leading-tight">
+        {title}
+      </h1>
+      
+      {/* Author and metadata */}
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <div className="flex items-center gap-2 text-gray-700">
+          <span className="font-medium">Author:</span>
+          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{formatAddress(author)}</span>
         </div>
-      </header>
-    </>
+        <span className="text-gray-300">|</span>
+        <time dateTime={new Date(updatedAt).toISOString()} className="text-gray-600">
+          {formatDate(updatedAt)}
+        </time>
+        <span className="text-gray-300">|</span>
+        <span className="text-gray-500 font-mono text-xs">Version {version}</span>
+      </div>
+    </header>
   );
 }
 
