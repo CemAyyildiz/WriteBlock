@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit';
 import { useEffect, useState } from 'react';
-import { Home, PenTool, Shield, User, FileText } from 'lucide-react';
+import { Home, PenTool, Shield, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { getWalletClient } from '@/lib/client';
@@ -50,124 +50,76 @@ export default function Sidebar() {
   }, [currentAccount?.address]);
 
   return (
-    <aside 
-      className="fixed left-0 top-20 h-[calc(100vh-5rem)] w-24 flex flex-col items-center py-8 border-r-[4px]"
-      style={{ 
-        background: '#FFFFFF',
-        borderColor: '#000000'
-      }}
-    >
-      {/* Navigation Links */}
-      <div className="flex flex-col items-center gap-8 flex-1">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
+      {/* Logo */}
+      <div className="p-6 border-b border-gray-200">
+        <Link href="/" className="block">
+          <h1 className="text-2xl font-serif font-bold text-gray-900 tracking-tight">
+            WriteBlock
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">Decentralized Publishing</p>
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-1">
         <Link
           href="/"
-          className="group flex flex-col items-center gap-2 transition-all"
-          title="Notes"
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+            isActive('/')
+              ? 'bg-gray-100 text-gray-900 font-medium'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
         >
-          <div 
-            className="p-4 border-[3px] transition-all brutal-rotate"
-            style={{ 
-              background: isActive('/') ? '#FFFF00' : '#FFFFFF',
-              borderColor: '#000000',
-              boxShadow: isActive('/') ? '3px 3px 0 #000000' : 'none',
-              color: '#000000'
-            }}
-          >
-            <FileText className="w-6 h-6" strokeWidth={3} />
-          </div>
-          <span 
-            className="text-[10px] font-black uppercase tracking-wide"
-            style={{ 
-              color: '#000000'
-            }}
-          >
-            Notes
-          </span>
+          <Home className="w-5 h-5" strokeWidth={1.5} />
+          <span className="text-sm">Home</span>
         </Link>
 
         <Link
           href="/author"
-          className="group flex flex-col items-center gap-2 transition-all"
-          title="Write"
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+            isActive('/author')
+              ? 'bg-gray-100 text-gray-900 font-medium'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
         >
-          <div 
-            className="p-4 border-[3px] transition-all brutal-rotate"
-            style={{ 
-              background: isActive('/author') ? '#FFFF00' : '#FFFFFF',
-              borderColor: '#000000',
-              boxShadow: isActive('/author') ? '3px 3px 0 #000000' : 'none',
-              color: '#000000'
-            }}
-          >
-            <PenTool className="w-6 h-6" strokeWidth={3} />
-          </div>
-          <span 
-            className="text-[10px] font-black uppercase tracking-wide"
-            style={{ 
-              color: '#000000'
-            }}
-          >
-            Write
-          </span>
+          <PenTool className="w-5 h-5" strokeWidth={1.5} />
+          <span className="text-sm">Write</span>
         </Link>
 
         <Link
           href="/admin"
-          className="group flex flex-col items-center gap-2 transition-all"
-          title="Admin"
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
+            isActive('/admin')
+              ? 'bg-gray-100 text-gray-900 font-medium'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
         >
-          <div 
-            className="p-4 border-[3px] transition-all brutal-rotate"
-            style={{ 
-              background: isActive('/admin') ? '#FFFF00' : '#FFFFFF',
-              borderColor: '#000000',
-              boxShadow: isActive('/admin') ? '3px 3px 0 #000000' : 'none',
-              color: '#000000'
-            }}
-          >
-            <Shield className="w-6 h-6" strokeWidth={3} />
-          </div>
-          <span 
-            className="text-[10px] font-black uppercase tracking-wide"
-            style={{ 
-              color: '#000000'
-            }}
-          >
-            Admin
-          </span>
+          <Shield className="w-5 h-5" strokeWidth={1.5} />
+          <span className="text-sm">Admin</span>
         </Link>
-      </div>
+      </nav>
 
       {/* Bottom Section */}
-      <div className="flex flex-col items-center gap-6">
-        {/* Role Badge */}
+      <div className="p-4 border-t border-gray-200 space-y-4">
+        {/* User Role */}
         {currentAccount && (
-          <>
-            <div className="w-16 h-[3px]" style={{ background: '#000000' }} />
-            <div className="flex flex-col items-center gap-2">
-              <div 
-                className="p-3 border-[3px]"
-                style={{ 
-                  background: '#FF00FF',
-                  borderColor: '#000000',
-                  color: '#000000',
-                  boxShadow: '2px 2px 0 #000000'
-                }}
-              >
-                <User className="w-6 h-6" strokeWidth={3} />
-              </div>
-              <span 
-                className="text-[9px] font-black uppercase tracking-wider"
-                style={{ color: '#000000' }}
-              >
-                {userRole}
-              </span>
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+              <User className="w-4 h-4 text-gray-600" strokeWidth={1.5} />
             </div>
-          </>
+            <div className="flex-1 min-w-0">
+              <Badge variant="secondary" className="text-xs font-normal capitalize">
+                {userRole}
+              </Badge>
+            </div>
+          </div>
         )}
 
-        {/* Wallet Connect Button */}
-        <div className="brutal-wallet-wrapper">
+        <Separator />
+
+        {/* Wallet Connect */}
+        <div className="px-2">
           <ConnectButton />
         </div>
       </div>

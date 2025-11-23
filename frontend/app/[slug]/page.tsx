@@ -1,17 +1,15 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import dynamic from 'next/dynamic';
-import 'easymde/dist/easymde.min.css';
-import Navbar from '@/components/Navbar';
-import { getBlockchainClient, getStorageClient, getWalletClient, initializeSuiWallet, getProviderConfig } from '@/lib/client';
+import { useState, useEffect } from 'react';
+import Sidebar from '@/components/Sidebar';
+import ArticleHeader from '@/components/article/ArticleHeader';
+import ArticleContent from '@/components/article/ArticleContent';
+import ProvenanceSection from '@/components/article/ProvenanceSection';
+import EditRequestModal from '@/components/article/EditRequestModal';
+import { getBlockchainClient, getStorageClient, initializeSuiWallet } from '@/lib/client';
 import { PageMetadata } from '@/types';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
-
-const SimpleMDE = dynamic(() => import('react-simplemde-editor'), { ssr: false });
 
 export default function PostPage() {
   const params = useParams();
@@ -31,7 +29,6 @@ export default function PostPage() {
   // Sui wallet integration
   const currentAccount = useCurrentAccount();
   const { mutate: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const config = getProviderConfig();
   
   // Initialize wallet for edit requests
   useEffect(() => {
@@ -61,10 +58,10 @@ export default function PostPage() {
         setLoading(true);
         setError(null);
 
-        // Reserved routes that cannot be used as article slugs
+        // Reserved routes check
         const reservedRoutes = ['author', 'admin', 'api', '_next', 'favicon.ico'];
         if (reservedRoutes.includes(slug.toLowerCase())) {
-          setError('This route is reserved and cannot be used as an article slug');
+          setError('This route is reserved');
           setLoading(false);
           router.push('/');
           return;
@@ -78,13 +75,10 @@ export default function PostPage() {
           throw new Error('Registry ID not configured');
         }
 
-        // Get all page IDs from registry
         const pageIds = await blockchainClient.getAllPages(registryId);
-        
-        // Try to find page by slug - search through all pages
         let foundPage: { metadata: any; content: string; blobData: any } | null = null;
         
-        // First, try to match by page-{id} format for backward compatibility
+        // Try to match by page-{id} format
         const pageIdMatch = slug.match(/page-(\d+)/);
         if (pageIdMatch) {
           const pageId = parseInt(pageIdMatch[1]);
@@ -92,43 +86,29 @@ export default function PostPage() {
             const pageObjectId = pageIds[pageId];
             const metadata = await blockchainClient.getPageMetadata(pageObjectId);
             
-            // Skip deleted pages
             if (!metadata.deleted) {
               const blobContent = await storageClient.download(metadata.walrusBlobId);
-              
-              // Try to parse as JSON (new format) or use as markdown (old format)
               let blobData: any;
-              let markdownContent: string;
               try {
                 blobData = JSON.parse(blobContent);
-                markdownContent = blobData.content || blobContent;
               } catch {
-                // Old format - just markdown
                 blobData = { slug: `page-${pageId}`, title: `Article #${pageId}`, excerpt: '', content: blobContent };
-                markdownContent = blobContent;
               }
-              
-              foundPage = { metadata, content: markdownContent, blobData };
+              foundPage = { metadata, content: blobData.content || blobContent, blobData };
             }
           }
         } else {
-          // Search by slug - iterate through all pages
+          // Search by slug
           for (let i = 0; i < pageIds.length; i++) {
             try {
               const pageObjectId = pageIds[i];
               const metadata = await blockchainClient.getPageMetadata(pageObjectId);
               
-              // Skip deleted pages
-              if (metadata.deleted) {
-                continue;
-              }
+              if (metadata.deleted) continue;
               
               const blobContent = await storageClient.download(metadata.walrusBlobId);
-              
-              // Try to parse as JSON (new format) or use as markdown (old format)
-              let blobData: any;
               try {
-                blobData = JSON.parse(blobContent);
+                const blobData = JSON.parse(blobContent);
                 if (blobData.slug === slug) {
                   foundPage = { 
                     metadata, 
@@ -138,15 +118,11 @@ export default function PostPage() {
                   break;
                 }
               } catch {
-                // Old format - skip (no slug match)
                 continue;
               }
             } catch (err: any) {
-              // 404 hatası ise blob henüz replicate olmamış olabilir, skip et
               if (err?.message?.includes('404') || err?.message?.includes('not found')) {
-                console.warn(`⚠️ Blob not yet replicated for page ${i}, skipping...`);
-              } else {
-                console.warn(`Failed to check page ${i}:`, err);
+                console.warn(`Blob not yet replicated for page ${i}`);
               }
               continue;
             }
@@ -161,7 +137,6 @@ export default function PostPage() {
 
         const { metadata, content: markdownContent, blobData } = foundPage;
 
-        // Extract title and excerpt from blobData (new format) or markdown (old format)
         const title = blobData.title || (() => {
           const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
           return titleMatch ? titleMatch[1] : `Article #${metadata.pageId}`;
@@ -195,37 +170,20 @@ export default function PostPage() {
     };
 
     fetchPageContent();
-  }, [slug]);
-
-  const formatAddress = (address: string) => {
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  }, [slug, router]);
 
   const handleOpenEditRequest = () => {
     if (!currentAccount) {
-      alert('Please connect your wallet first to suggest edits');
+      alert('Please connect your wallet first');
       return;
     }
-    setEditRequestContent(content); // Pre-fill with current content
+    setEditRequestContent(content);
     setShowEditRequestModal(true);
   };
 
   const handleSubmitEditRequest = async () => {
-    if (!page || !editRequestContent.trim()) {
-      alert('Please provide edited content');
-      return;
-    }
-
-    if (!currentAccount) {
-      alert('Please connect your wallet first');
+    if (!page || !editRequestContent.trim() || !currentAccount) {
+      alert('Missing required information');
       return;
     }
 
@@ -235,11 +193,8 @@ export default function PostPage() {
       const blockchainClient = getBlockchainClient();
       const storageClient = getStorageClient();
       
-      // Get page object ID from registry
       const registryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-      if (!registryId) {
-        throw new Error('Registry ID not configured');
-      }
+      if (!registryId) throw new Error('Registry ID not configured');
       
       const pageIds = await blockchainClient.getAllPages(registryId);
       let pageObjectId: string | null = null;
@@ -252,11 +207,8 @@ export default function PostPage() {
         }
       }
       
-      if (!pageObjectId) {
-        throw new Error('Page object ID not found');
-      }
+      if (!pageObjectId) throw new Error('Page object ID not found');
 
-      // Create JSON blob with edited content (preserve title, slug, excerpt from original)
       const blobData = {
         slug: page.slug || `page-${page.page_id}`,
         title: page.title || `Article #${page.page_id}`,
@@ -264,23 +216,14 @@ export default function PostPage() {
         content: editRequestContent,
       };
       
-      // Upload edited content to Walrus
       const newWalrusBlobId = await storageClient.upload(JSON.stringify(blobData));
-      console.log('✅ Edit request content uploaded:', newWalrusBlobId);
-      
-      // Create edit request on blockchain
-      const txResult = await blockchainClient.createEditRequest(
-        pageObjectId,
-        newWalrusBlobId
-      );
+      const txResult = await blockchainClient.createEditRequest(pageObjectId, newWalrusBlobId);
       
       if (!txResult.success) {
         throw new Error(txResult.error || 'Failed to create edit request');
       }
       
-      console.log('✅ Edit request created:', txResult.txHash);
-      
-      alert('✅ Edit request submitted successfully! The author will review it.');
+      alert('✅ Edit request submitted successfully!');
       setShowEditRequestModal(false);
       setEditRequestContent('');
     } catch (error) {
@@ -291,42 +234,15 @@ export default function PostPage() {
     }
   };
 
-  const editorOptions = useMemo(() => {
-    return {
-      spellChecker: false,
-      placeholder: 'Edit the content...',
-      status: ['lines', 'words', 'cursor'] as any,
-      autofocus: true,
-      toolbar: [
-        'bold',
-        'italic',
-        'heading',
-        '|',
-        'quote',
-        'unordered-list',
-        'ordered-list',
-        '|',
-        'link',
-        'image',
-        '|',
-        'preview',
-        'side-by-side',
-        'fullscreen',
-        '|',
-        'guide',
-      ] as any,
-    };
-  }, []);
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        <Navbar />
-        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-6 text-sm text-gray-500">
-            Loading story...
-          </p>
+      <div className="min-h-screen bg-white flex">
+        <Sidebar />
+        <div className="flex-1 ml-64">
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="mt-6 text-sm text-gray-500">Loading story...</p>
+          </div>
         </div>
       </div>
     );
@@ -334,216 +250,92 @@ export default function PostPage() {
 
   if (error || !page) {
     return (
-      <div className="min-h-screen bg-white">
-        <Navbar />
-        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-          <p className="text-4xl mb-4">📚</p>
-          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
-            {error ? 'Failed to Load Story' : 'Story Not Found'}
-          </h1>
-          <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
-            {error || "The story you're looking for doesn't exist or has been removed."}
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
-          >
-            ← Back to home
-          </button>
+      <div className="min-h-screen bg-white flex">
+        <Sidebar />
+        <div className="flex-1 ml-64">
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <p className="text-4xl mb-4">📚</p>
+            <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+              {error ? 'Failed to Load Story' : 'Story Not Found'}
+            </h1>
+            <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
+              {error || "The story you're looking for doesn't exist or has been removed."}
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
+            >
+              ← Back to home
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  const isAuthor = currentAccount && page.author.toLowerCase() === currentAccount.address.toLowerCase();
+  const canSuggestEdit = currentAccount && !isAuthor;
+
   return (
-    <div className="min-h-screen bg-white">
-      <Navbar />
+    <div className="min-h-screen bg-white flex">
+      <Sidebar />
 
-      <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push('/')}
-          className="mb-12 text-gray-600 hover:text-gray-900 transition-colors duration-200 inline-flex items-center gap-2"
-        >
-          <span>←</span>
-          <span className="text-sm">Back</span>
-        </button>
+      <main className="flex-1 ml-64">
+        <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
+          <ArticleHeader
+            title={page.title || `Article #${page.page_id}`}
+            author={page.author}
+            updatedAt={page.updated_at}
+            version={page.version}
+            onBack={() => router.push('/')}
+          />
 
-        {/* Article Header */}
-        <header className="mb-12">
-          <h1 className="text-5xl sm:text-6xl font-serif font-bold text-gray-900 mb-8 leading-tight">
-            {page.title}
-          </h1>
-          
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 border-t border-b border-gray-200 py-4">
-            <div className="flex items-center gap-2">
-              <span>By</span>
-              <span className="font-mono text-xs">{formatAddress(page.author)}</span>
-            </div>
-            <span>•</span>
-            <time dateTime={new Date(page.updated_at).toISOString()}>
-              {formatDate(page.updated_at)}
-            </time>
-            <span>•</span>
-            <span className="text-gray-400">v{page.version}</span>
-          </div>
-        </header>
+          <ArticleContent content={content} />
 
-        {/* Article Content */}
-        <div className="prose prose-lg max-w-none mb-16">
-          <div className="text-xl leading-relaxed text-gray-800 [&>h1]:text-4xl [&>h1]:font-serif [&>h1]:font-bold [&>h1]:mt-12 [&>h1]:mb-6 [&>h1]:leading-tight [&>h2]:text-3xl [&>h2]:font-serif [&>h2]:font-bold [&>h2]:mt-10 [&>h2]:mb-5 [&>h3]:text-2xl [&>h3]:font-serif [&>h3]:font-bold [&>h3]:mt-8 [&>h3]:mb-4 [&>p]:mb-8 [&>p]:leading-relaxed [&>ul]:mb-8 [&>ol]:mb-8 [&>li]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:my-8 [&>pre]:bg-gray-50 [&>pre]:border [&>pre]:border-gray-200 [&>pre]:rounded-lg [&>pre]:p-6 [&>pre]:my-8 [&>pre]:overflow-x-auto [&>code]:bg-gray-100 [&>code]:px-2 [&>code]:py-1 [&>code]:rounded [&>code]:text-base [&>code]:font-mono">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {content}
-            </ReactMarkdown>
-          </div>
-        </div>
-
-        {/* Suggest Edit Button */}
-        {page && (
-          (() => {
-            const isAuthor = currentAccount && page.author.toLowerCase() === currentAccount.address.toLowerCase();
-            const shouldShow = currentAccount && !isAuthor;
-            
-            return shouldShow ? (
-              <div className="mb-16 pb-16 border-b border-gray-200">
-                <button
-                  onClick={handleOpenEditRequest}
-                  className="px-6 py-3 border border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors duration-200 inline-flex items-center gap-2"
-                >
-                  <span>✏️</span>
-                  <span>Suggest an edit</span>
-                </button>
-              </div>
-            ) : null;
-          })()
-        )}
-
-        {/* Provenance Section */}
-        <div className="border-t border-gray-200 pt-12 mb-12">
-          <h2 className="text-2xl font-serif font-bold text-gray-900 mb-8">
-            Blockchain Provenance
-          </h2>
-
-          <div className="bg-gray-50 rounded-lg p-8 mb-8">
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Page ID
-                </div>
-                <div className="font-mono text-lg font-bold text-gray-900">
-                  #{page.page_id}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Version
-                </div>
-                <div className="font-mono text-lg font-bold text-gray-900">
-                  v{page.version}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Walrus Blob ID
-                </div>
-                <div className="font-mono text-sm text-gray-700 break-all">
-                  {page.walrus_blob_id}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-                  Author Address
-                </div>
-                <div className="font-mono text-sm text-gray-700 break-all">
-                  {page.author}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-200 flex items-center justify-center">
-                <span className="text-green-800">✓</span>
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900 mb-2">
-                  Verified on Blockchain
-                </h3>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  This story is permanently stored on Sui blockchain with content on Walrus decentralized storage. 
-                  The author address and version number guarantee authenticity and immutability.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Back Navigation */}
-        <div className="text-center pb-16">
-          <button
-            onClick={() => router.push('/')}
-            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200 inline-flex items-center gap-2"
-          >
-            <span>←</span>
-            <span>More stories</span>
-          </button>
-        </div>
-      </article>
-
-      {/* Edit Request Modal */}
-      {showEditRequestModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-3xl font-serif font-bold text-gray-900 mb-2">
-              Suggest an Edit
-            </h2>
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              Make your changes below. The author will review your suggestion before publishing.
-            </p>
-            
-            <div className="mb-6">
-              <SimpleMDE
-                value={editRequestContent}
-                onChange={setEditRequestContent}
-                options={editorOptions}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
+          {/* Suggest Edit Button */}
+          {canSuggestEdit && (
+            <div className="mb-16 pb-16 border-b border-gray-200">
               <button
-                onClick={() => {
-                  setShowEditRequestModal(false);
-                  setEditRequestContent('');
-                }}
-                disabled={isSubmittingRequest}
-                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-full transition-colors disabled:opacity-50"
+                onClick={handleOpenEditRequest}
+                className="px-6 py-3 border border-gray-900 text-gray-900 rounded-full font-medium hover:bg-gray-50 transition-colors duration-200 inline-flex items-center gap-2"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitEditRequest}
-                disabled={isSubmittingRequest || !editRequestContent.trim()}
-                className="flex-1 px-6 py-3 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-full transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isSubmittingRequest ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Submitting...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Submit suggestion</span>
-                  </>
-                )}
+                <span>✏️</span>
+                <span>Suggest an edit</span>
               </button>
             </div>
+          )}
+
+          <ProvenanceSection
+            pageId={page.page_id}
+            version={page.version}
+            walrusBlobId={page.walrus_blob_id}
+            author={page.author}
+          />
+
+          {/* Back Navigation */}
+          <div className="text-center pb-16">
+            <button
+              onClick={() => router.push('/')}
+              className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <span>←</span>
+              <span>More stories</span>
+            </button>
           </div>
-        </div>
-      )}
+        </article>
+      </main>
+
+      <EditRequestModal
+        isOpen={showEditRequestModal}
+        content={editRequestContent}
+        isSubmitting={isSubmittingRequest}
+        onClose={() => {
+          setShowEditRequestModal(false);
+          setEditRequestContent('');
+        }}
+        onContentChange={setEditRequestContent}
+        onSubmit={handleSubmitEditRequest}
+      />
     </div>
   );
 }
