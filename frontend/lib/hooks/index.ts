@@ -5,4 +5,5 @@
 
 export * from './useWalletCapabilities';
 export * from './usePageData';
+export * from './useToast';
 

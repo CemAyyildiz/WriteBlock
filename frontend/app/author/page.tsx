@@ -10,11 +10,13 @@ import EditorForm from '@/components/author/EditorForm';
 import EditorSidebar from '@/components/author/EditorSidebar';
 import DeleteConfirmModal from '@/components/author/DeleteConfirmModal';
 import ViewEditRequestModal from '@/components/author/ViewEditRequestModal';
+import Toast from '@/components/Toast';
 import { getStorageClient, getBlockchainClient } from '@/lib/client';
 import { PageMetadata } from '@/types';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
 import { useUserPages, useEditRequests } from '@/lib/hooks/usePageData';
+import { useToast } from '@/lib/hooks/useToast';
 import { generateSlug } from '@/lib/utils/format';
 
 export default function AuthorPage() {
@@ -23,6 +25,7 @@ export default function AuthorPage() {
   const { authorCapId, registryId } = useWalletCapabilities();
   const { pages, pageObjectIds, fetchUserPages } = useUserPages();
   const { editRequests, fetchEditRequestsContent } = useEditRequests();
+  const { toasts, hideToast, success, error, warning } = useToast();
   
   // Editor states
   const [title, setTitle] = useState('');
@@ -145,23 +148,23 @@ export default function AuthorPage() {
 
   const handlePublish = async () => {
     if (!title.trim()) {
-      alert('Please enter a title');
+      error('Please enter a title');
       return;
     }
     if (!slug.trim()) {
-      alert('Please enter a slug');
+      error('Please enter a slug');
       return;
     }
     if (slugError) {
-      alert('Please fix slug error');
+      error('Please fix slug error');
       return;
     }
     if (!authorCapId) {
-      alert('Author capability not found. Please ensure you have Author capability.');
+      error('Author capability not found. Please ensure you have Author capability.');
       return;
     }
     if (!registryId) {
-      alert('Registry ID not configured');
+      error('Registry ID not configured');
       return;
     }
 
@@ -210,9 +213,9 @@ export default function AuthorPage() {
         setSaveSuccess(false);
         setTxInfo(null);
       }, 10000);
-    } catch (error) {
-      console.error('Error publishing:', error);
-      alert('Failed to publish: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Error publishing:', err);
+      error('Failed to publish: ' + (err as Error).message);
     } finally {
       setIsSaving(false);
     }
@@ -221,11 +224,11 @@ export default function AuthorPage() {
   const handleUpdate = async () => {
     if (!editingPage) return;
     if (!title.trim() || !slug.trim()) {
-      alert('Please enter title and slug');
+      error('Please enter title and slug');
       return;
     }
     if (slugError) {
-      alert('Please fix slug error');
+      error('Please fix slug error');
       return;
     }
 
@@ -262,7 +265,7 @@ export default function AuthorPage() {
 
       console.log('✅ Page updated on blockchain:', txResult.txHash);
 
-      alert('✅ Article updated successfully!');
+      success('Article updated successfully!');
       
       setEditingPage(null);
       setTitle('');
@@ -273,9 +276,9 @@ export default function AuthorPage() {
       if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('Failed to update: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Error updating:', err);
+      error('Failed to update: ' + (err as Error).message);
     } finally {
       setIsUpdating(false);
     }
@@ -306,7 +309,7 @@ export default function AuthorPage() {
   const handleDelete = async () => {
     if (!deleteConfirmPage) return;
     if (!authorCapId) {
-      alert('Author capability not found');
+      error('Author capability not found');
       return;
     }
 
@@ -327,16 +330,16 @@ export default function AuthorPage() {
       }
 
       console.log('✅ Page deleted:', txResult.txHash);
-      alert('✅ Article deleted successfully!');
+      success('Article deleted successfully!');
 
       if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
 
       setDeleteConfirmPage(null);
-    } catch (error) {
-      console.error('Error deleting:', error);
-      alert('Failed to delete: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Error deleting:', err);
+      error('Failed to delete: ' + (err as Error).message);
     } finally {
       setIsDeleting(false);
     }
@@ -344,7 +347,7 @@ export default function AuthorPage() {
 
   const handleApproveRequest = async (pageId: number, requestId: number) => {
     if (!authorCapId) {
-      alert('Author capability not found');
+      error('Author capability not found');
       return;
     }
 
@@ -365,14 +368,14 @@ export default function AuthorPage() {
       }
 
       console.log('✅ Edit request approved:', txResult.txHash);
-      alert('✅ Edit request approved successfully!');
+      success('Edit request approved successfully!');
 
       if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
-    } catch (error) {
-      console.error('Error approving request:', error);
-      alert('Failed to approve request: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Error approving request:', err);
+      error('Failed to approve request: ' + (err as Error).message);
     } finally {
       setProcessingRequest(null);
     }
@@ -380,7 +383,7 @@ export default function AuthorPage() {
 
   const handleRejectRequest = async (pageId: number, requestId: number) => {
     if (!authorCapId) {
-      alert('Author capability not found');
+      error('Author capability not found');
       return;
     }
 
@@ -401,14 +404,14 @@ export default function AuthorPage() {
       }
 
       console.log('✅ Edit request rejected:', txResult.txHash);
-      alert('✅ Edit request rejected.');
+      success('Edit request rejected successfully');
 
       if (currentAccount?.address) {
         await fetchUserPages(currentAccount.address);
       }
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      alert('Failed to reject request: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Error rejecting request:', err);
+      error('Failed to reject request: ' + (err as Error).message);
     } finally {
       setProcessingRequest(null);
     }
@@ -429,9 +432,9 @@ export default function AuthorPage() {
           content: blobData.content,
         };
         setViewingRequest({ page, request: updatedRequest });
-      } catch (error) {
-        console.error('Error loading request content:', error);
-        alert('Failed to load content: ' + (error as Error).message);
+      } catch (err) {
+        console.error('Error loading request content:', err);
+        error('Failed to load content: ' + (err as Error).message);
         setViewingRequest({ page, request });
       } finally {
         setLoadingRequestContent(false);
@@ -555,6 +558,16 @@ export default function AuthorPage() {
             viewingRequest={viewingRequest}
             onClose={() => setViewingRequest(null)}
           />
+
+          {/* Toast Notifications */}
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+              onClose={() => hideToast(toast.id)}
+            />
+          ))}
         </div>
       </main>
     </>

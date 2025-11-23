@@ -9,10 +9,12 @@ import GrantAuthorForm from '@/components/admin/GrantAuthorForm';
 import HowItWorksSection from '@/components/admin/HowItWorksSection';
 import SuccessMessage from '@/components/admin/SuccessMessage';
 import AuthorsList from '@/components/admin/AuthorsList';
+import Toast from '@/components/Toast';
 import { Author } from '@/types';
 import { getBlockchainClient, getWalletClient, getProviderConfig } from '@/lib/client';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useWalletCapabilities } from '@/lib/hooks/useWalletCapabilities';
+import { useToast } from '@/lib/hooks/useToast';
 import { formatAddress, formatDate, isValidSuiAddress } from '@/lib/utils/format';
 
 export default function AdminPage() {
@@ -27,6 +29,7 @@ export default function AdminPage() {
   const currentAccount = useCurrentAccount();
   const { adminCapId } = useWalletCapabilities();
   const config = getProviderConfig();
+  const { toasts, hideToast, success, error, warning } = useToast();
 
   // Fetch authors from blockchain
   useEffect(() => {
@@ -64,27 +67,27 @@ export default function AdminPage() {
 
   const handleGrantCapability = async () => {
     if (!newAuthorAddress || !newAuthorName) {
-      alert('Please fill all fields');
+      error('Please fill all fields');
       return;
     }
 
     if (!isValidSuiAddress(newAuthorAddress)) {
-      alert('Invalid Sui address format. Address must start with 0x and be 66 characters long.');
+      error('Invalid Sui address format. Address must start with 0x and be 66 characters long.');
       return;
     }
 
     if (authors.some(a => a.address.toLowerCase() === newAuthorAddress.toLowerCase())) {
-      alert('This address already has author capability');
+      warning('This address already has author capability');
       return;
     }
 
     if (config.blockchain === 'sui') {
       if (!currentAccount) {
-        alert('Please connect your Sui wallet first');
+        error('Please connect your Sui wallet first');
         return;
       }
       if (!adminCapId) {
-        alert('You need Admin capability to grant author permissions. Only the deployer has admin rights.');
+        error('You need Admin capability to grant author permissions. Only the deployer has admin rights.');
         return;
       }
     }
@@ -109,6 +112,7 @@ export default function AdminPage() {
       
       setTxHash(txResult.txHash);
       setGrantSuccess(true);
+      success('Author capability granted successfully!');
       
       setNewAuthorAddress('');
       setNewAuthorName('');
@@ -137,9 +141,9 @@ export default function AdminPage() {
         
         setGrantSuccess(false);
       }, 3000);
-    } catch (error) {
-      console.error('Grant error:', error);
-      alert('Authorization failed: ' + (error as Error).message);
+    } catch (err) {
+      console.error('Grant error:', err);
+      error('Authorization failed: ' + (err as Error).message);
     } finally {
       setIsGranting(false);
     }
@@ -227,6 +231,16 @@ export default function AdminPage() {
           )}
 
           <AuthorsList authors={authors} />
+
+          {/* Toast Notifications */}
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              type={toast.type}
+              onClose={() => hideToast(toast.id)}
+            />
+          ))}
         </div>
       </main>
     </>
