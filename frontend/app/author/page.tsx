@@ -21,7 +21,7 @@ export default function AuthorPage() {
   const router = useRouter();
   const currentAccount = useCurrentAccount();
   const { authorCapId, registryId } = useWalletCapabilities();
-  const { pages, fetchUserPages } = useUserPages();
+  const { pages, pageObjectIds, fetchUserPages } = useUserPages();
   const { editRequests, fetchEditRequestsContent } = useEditRequests();
   
   // Editor states
@@ -53,6 +53,35 @@ export default function AuthorPage() {
       fetchUserPages(currentAccount.address);
     }
   }, [currentAccount, fetchUserPages]);
+
+  // Fetch edit requests for all user pages
+  useEffect(() => {
+    const fetchAllEditRequests = async () => {
+      if (pages.length === 0 || pageObjectIds.size === 0) return;
+
+      const blockchainClient = getBlockchainClient();
+      
+      for (const page of pages) {
+        try {
+          const pageObjectId = pageObjectIds.get(page.page_id);
+          if (!pageObjectId) {
+            console.warn(`Page object ID not found for page ${page.page_id}`);
+            continue;
+          }
+
+          const requests = await blockchainClient.getEditRequests(pageObjectId);
+          
+          if (requests.length > 0) {
+            await fetchEditRequestsContent(page.page_id, requests);
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch edit requests for page ${page.page_id}:`, err);
+        }
+      }
+    };
+
+    fetchAllEditRequests();
+  }, [pages, pageObjectIds, fetchEditRequestsContent]);
 
   // Slug validation with debounce
   useEffect(() => {
@@ -216,22 +245,7 @@ export default function AuthorPage() {
       const walrusBlobId = await storageClient.upload(JSON.stringify(blobData));
       console.log('✅ Updated content uploaded to Walrus:', walrusBlobId);
 
-      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-      if (!envRegistryId) {
-        throw new Error('Registry ID not configured');
-      }
-
-      const pageIds = await blockchainClient.getAllPages(envRegistryId);
-      let pageObjectId: string | null = null;
-
-      for (const pageId of pageIds) {
-        const metadata = await blockchainClient.getPageMetadata(pageId);
-        if (metadata.pageId === editingPage.page_id) {
-          pageObjectId = pageId;
-          break;
-        }
-      }
-
+      const pageObjectId = pageObjectIds.get(editingPage.page_id);
       if (!pageObjectId) {
         throw new Error('Page object ID not found');
       }
@@ -300,23 +314,8 @@ export default function AuthorPage() {
 
     try {
       const blockchainClient = getBlockchainClient();
-      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-
-      if (!envRegistryId) {
-        throw new Error('Registry ID not configured');
-      }
-
-      const pageIds = await blockchainClient.getAllPages(envRegistryId);
-      let pageObjectId: string | null = null;
-
-      for (const pageId of pageIds) {
-        const metadata = await blockchainClient.getPageMetadata(pageId);
-        if (metadata.pageId === deleteConfirmPage.page_id) {
-          pageObjectId = pageId;
-          break;
-        }
-      }
-
+      
+      const pageObjectId = pageObjectIds.get(deleteConfirmPage.page_id);
       if (!pageObjectId) {
         throw new Error('Page object ID not found');
       }
@@ -353,23 +352,8 @@ export default function AuthorPage() {
 
     try {
       const blockchainClient = getBlockchainClient();
-      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-
-      if (!envRegistryId) {
-        throw new Error('Registry ID not configured');
-      }
-
-      const pageIds = await blockchainClient.getAllPages(envRegistryId);
-      let pageObjectId: string | null = null;
-
-      for (const pid of pageIds) {
-        const metadata = await blockchainClient.getPageMetadata(pid);
-        if (metadata.pageId === pageId) {
-          pageObjectId = pid;
-          break;
-        }
-      }
-
+      
+      const pageObjectId = pageObjectIds.get(pageId);
       if (!pageObjectId) {
         throw new Error('Page object ID not found');
       }
@@ -404,23 +388,8 @@ export default function AuthorPage() {
 
     try {
       const blockchainClient = getBlockchainClient();
-      const envRegistryId = process.env.NEXT_PUBLIC_REGISTRY_ID;
-
-      if (!envRegistryId) {
-        throw new Error('Registry ID not configured');
-      }
-
-      const pageIds = await blockchainClient.getAllPages(envRegistryId);
-      let pageObjectId: string | null = null;
-
-      for (const pid of pageIds) {
-        const metadata = await blockchainClient.getPageMetadata(pid);
-        if (metadata.pageId === pageId) {
-          pageObjectId = pid;
-          break;
-        }
-      }
-
+      
+      const pageObjectId = pageObjectIds.get(pageId);
       if (!pageObjectId) {
         throw new Error('Page object ID not found');
       }

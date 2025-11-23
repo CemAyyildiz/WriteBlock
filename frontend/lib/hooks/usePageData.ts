@@ -130,6 +130,7 @@ export function usePages() {
  */
 export function useUserPages() {
   const [pages, setPages] = useState<PageMetadata[]>([]);
+  const [pageObjectIds, setPageObjectIds] = useState<Map<number, string>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,10 +149,11 @@ export function useUserPages() {
 
       const pageIds = await blockchainClient.getAllPages(envRegistryId);
       const userPages: PageMetadata[] = [];
+      const objectIdsMap = new Map<number, string>();
 
-      for (const pageId of pageIds) {
+      for (const pageObjectId of pageIds) {
         try {
-          const metadata = await blockchainClient.getPageMetadata(pageId);
+          const metadata = await blockchainClient.getPageMetadata(pageObjectId);
 
           // Filter by author and exclude deleted
           if (
@@ -160,6 +162,9 @@ export function useUserPages() {
           ) {
             continue;
           }
+
+          // Store the object ID mapping
+          objectIdsMap.set(metadata.pageId, pageObjectId);
 
           // Parse blob content
           let title = `Article #${metadata.pageId}`;
@@ -191,12 +196,13 @@ export function useUserPages() {
             markdown_content: markdownContent,
           });
         } catch (err) {
-          console.warn(`Failed to fetch page ${pageId}:`, err);
+          console.warn(`Failed to fetch page ${pageObjectId}:`, err);
         }
       }
 
       userPages.sort((a, b) => b.updated_at - a.updated_at);
       setPages(userPages);
+      setPageObjectIds(objectIdsMap);
       return userPages;
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to load user pages';
@@ -209,6 +215,7 @@ export function useUserPages() {
 
   return {
     pages,
+    pageObjectIds,
     loading,
     error,
     fetchUserPages,
