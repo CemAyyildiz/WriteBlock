@@ -9,7 +9,7 @@
     "NEXT_PUBLIC_SUI_NETWORK": "testnet",
     "NEXT_PUBLIC_WALRUS_PUBLISHER_URL": "https://publisher.walrus-testnet.walrus.space",
     "NEXT_PUBLIC_WALRUS_AGGREGATOR_URL": "https://aggregator.walrus-testnet.walrus.space",
-    "NEXT_PUBLIC_PACKAGE_ID": "@YOUR_PACKAGE_ID",
-    "NEXT_PUBLIC_REGISTRY_ID": "@YOUR_REGISTRY_ID"
+    "NEXT_PUBLIC_PACKAGE_ID": "0x5b6df9daff189eb71a27deac419eecc1f0610c63fe3cf04cd36111c4d0281ab1",
+    "NEXT_PUBLIC_REGISTRY_ID": "0x3296db1f92ccb988ffbcd43960260033d423b9337dd97ecfa158c93c215ef033"
   }
 }
