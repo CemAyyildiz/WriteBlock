@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Not using 'export' in Vercel - API routes needed for Walrus proxy
-  // Use environment variable to switch between Vercel (server) and static export (Walrus Sites)
+  // Static export for Walrus Sites (NEXT_EXPORT=true)
+  // Regular server for Vercel (default)
+  output: process.env.NEXT_EXPORT === 'true' ? 'export' : undefined,
   images: {
     unoptimized: true,
   },

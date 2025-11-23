@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:static": "NEXT_EXPORT=true next build && mv .next/static out/static 2>/dev/null || true",
-    "build:walrus": "NEXT_EXPORT=true next build && next export",
+    "build:walrus": "rm -rf app/api app/\\[slug\\] && NEXT_EXPORT=true next build && git restore app/api app/\\[slug\\]",
     "start": "next start",
     "lint": "next lint"
   },
