@@ -236,40 +236,36 @@ export default function PostPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex">
+      <>
         <Sidebar />
-        <div className="flex-1 ml-64">
-          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-            <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="mt-6 text-sm text-gray-500">Loading story...</p>
-          </div>
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center bg-white pt-16 lg:pt-0">
+          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-6 text-sm text-gray-500">Loading story...</p>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error || !page) {
     return (
-      <div className="min-h-screen bg-white flex">
+      <>
         <Sidebar />
-        <div className="flex-1 ml-64">
-          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-            <p className="text-4xl mb-4">📚</p>
-            <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
-              {error ? 'Failed to Load Story' : 'Story Not Found'}
-            </h1>
-            <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
-              {error || "The story you're looking for doesn't exist or has been removed."}
-            </p>
-            <button
-              onClick={() => router.push('/')}
-              className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
-            >
-              ← Back to home
-            </button>
-          </div>
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center bg-white pt-16 lg:pt-0">
+          <p className="text-4xl mb-4">📚</p>
+          <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+            {error ? 'Failed to Load Story' : 'Story Not Found'}
+          </h1>
+          <p className="text-lg text-gray-600 mb-10 max-w-md mx-auto leading-relaxed">
+            {error || "The story you're looking for doesn't exist or has been removed."}
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-8 py-3.5 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors duration-200"
+          >
+            ← Back to home
+          </button>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -277,10 +273,10 @@ export default function PostPage() {
   const canSuggestEdit = currentAccount && !isAuthor;
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <>
       <Sidebar />
 
-      <main className="flex-1 ml-64">
+      <main className="bg-white pt-16 lg:pt-0">
         <article className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
           <ArticleHeader
             title={page.title || `Article #${page.page_id}`}
@@ -323,19 +319,19 @@ export default function PostPage() {
             </button>
           </div>
         </article>
-      </main>
 
-      <EditRequestModal
-        isOpen={showEditRequestModal}
-        content={editRequestContent}
-        isSubmitting={isSubmittingRequest}
-        onClose={() => {
-          setShowEditRequestModal(false);
-          setEditRequestContent('');
-        }}
-        onContentChange={setEditRequestContent}
-        onSubmit={handleSubmitEditRequest}
-      />
-    </div>
+        <EditRequestModal
+          isOpen={showEditRequestModal}
+          content={editRequestContent}
+          isSubmitting={isSubmittingRequest}
+          onClose={() => {
+            setShowEditRequestModal(false);
+            setEditRequestContent('');
+          }}
+          onContentChange={setEditRequestContent}
+          onSubmit={handleSubmitEditRequest}
+        />
+      </main>
+    </>
   );
 }

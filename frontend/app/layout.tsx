@@ -3,12 +3,13 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import '@mysten/dapp-kit/dist/index.css';
 import { Providers } from '@/components/Providers';
+import { SidebarProvider } from '@/components/SidebarLayout';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'WriteBlock - Decentralized CMS',
-  description: 'A decentralized content management system built on Sui blockchain with Walrus storage',
+  title: 'WriteBlock - Decentralized Publishing',
+  description: 'A decentralized publishing platform built on Sui blockchain with Walrus storage',
 };
 
 export default function RootLayout({
@@ -17,10 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr">
+    <html lang="en">
       <body className={inter.className}>
         <Providers>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </Providers>
       </body>
     </html>
