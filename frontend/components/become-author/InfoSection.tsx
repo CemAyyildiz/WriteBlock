@@ -49,7 +49,7 @@ export default function InfoSection() {
           </h3>
           <p className="text-sm ml-8 leading-relaxed">
             After submitting your request, the admin team will review your application.
-            You'll receive author capabilities once approved. The process typically takes 1-2 days.
+            You&apos;ll receive author capabilities once approved. The process typically takes 1-2 days.
           </p>
         </div>
       </div>

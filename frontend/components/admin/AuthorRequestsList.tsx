@@ -131,7 +131,7 @@ function RequestCard({ request, onApprove, onReject, isProcessing, readonly }: R
 
       {request.bio && (
         <div className="mb-3">
-          <p className="text-sm text-gray-700 italic">"{request.bio}"</p>
+          <p className="text-sm text-gray-700 italic">&quot;{request.bio}&quot;</p>
         </div>
       )}
 

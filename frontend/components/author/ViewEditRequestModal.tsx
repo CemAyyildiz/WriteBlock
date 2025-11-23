@@ -111,7 +111,7 @@ export default function ViewEditRequestModal({
                   Content not loaded
                 </p>
                 <p className="text-sm text-gray-600 mb-4">
-                  Please click "View Content" button to load.
+                  Please click &quot;View Content&quot; button to load.
                 </p>
                 <div className="text-xs text-gray-500">
                   Walrus Blob ID: <span className="font-mono font-semibold">{request.newWalrusBlobId}</span>

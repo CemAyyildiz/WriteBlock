@@ -205,7 +205,7 @@ export default function BecomeAuthorPage() {
               <span className="text-4xl">✍️</span>
             </div>
             <h2 className="text-3xl font-serif font-bold text-gray-900 mb-4">
-              You're Already an Author!
+              You&apos;re Already an Author!
             </h2>
             <p className="text-gray-600 mb-8 leading-relaxed">
               You already have author capabilities. Start creating amazing content!
