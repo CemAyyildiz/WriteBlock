@@ -1,4 +1,8 @@
 import Link from 'next/link';
+import { Clock, User, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { PageMetadata } from '@/types';
 
 interface ArticlesListProps {
@@ -9,7 +13,7 @@ export default function ArticlesList({ pages }: ArticlesListProps) {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric',
     });
   };
@@ -20,77 +24,55 @@ export default function ArticlesList({ pages }: ArticlesListProps) {
 
   if (pages.length === 0) {
     return (
-      <div className="glass-card p-16 text-center">
-        <div className="text-7xl mb-6 opacity-50">📝</div>
-        <h3 className="text-2xl font-bold text-navy-700 dark:text-navy-300 mb-3">
-          No articles yet
+      <div className="max-w-2xl mx-auto py-16 text-center">
+        <FileText className="w-12 h-12 mx-auto text-gray-300 mb-6" strokeWidth={1.5} />
+        <h3 className="text-2xl font-serif font-semibold text-gray-900 mb-3 tracking-tight">
+          No stories yet
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-          Start creating content with the decentralized CMS
+        <p className="text-base text-gray-600 mb-8 leading-relaxed">
+          Be the first to share your thoughts on WriteBlock.
         </p>
-        <Link
-          href="/author"
-          className="modern-button inline-flex items-center gap-2"
-        >
-          <span>Create First Article</span>
-          <span>→</span>
-        </Link>
+        <Button asChild className="rounded-full">
+          <Link href="/author">
+            Start Writing
+          </Link>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       {pages.map((page) => (
-        <Link
-          key={page.page_id}
-          href={`/${page.slug}`}
-          className="block group"
-        >
-          <article className="glass-card p-8 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden">
-            {/* Background gradient on hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-navy-500/5 to-neon-green/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 pr-6">
-                  <h2 className="text-3xl font-bold mb-3 text-navy-800 dark:text-navy-100 group-hover:text-navy-600 dark:group-hover:text-neon-green transition-colors">
-                    {page.title}
-                  </h2>
-                  <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-                    {page.excerpt}
-                  </p>
-                </div>
-                <div className="flex-shrink-0">
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-navy-100 to-navy-200 dark:from-navy-800 dark:to-navy-700 group-hover:shadow-xl transition-shadow">
-                    <span className="text-3xl">📄</span>
-                  </div>
-                </div>
+        <article key={page.page_id} className="max-w-3xl">
+          <Link href={`/${page.slug}`} className="block group">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <User className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <span className="font-mono text-xs">{formatAddress(page.author)}</span>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-navy-600 dark:text-navy-400">👤</span>
-                    <span>{formatAddress(page.author)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-navy-600 dark:text-navy-400">📅</span>
-                    <span>{formatDate(page.updated_at)}</span>
-                  </div>
-                  <div className="provenance-chip">
-                    v{page.version}
-                  </div>
-                </div>
+              <h2 className="text-3xl font-serif font-bold text-gray-900 leading-[1.2] tracking-tight group-hover:text-gray-700 transition-colors duration-200">
+                {page.title}
+              </h2>
 
-                <div className="flex items-center gap-2 font-semibold text-navy-600 dark:text-neon-green group-hover:gap-4 transition-all">
-                  <span>Read More</span>
-                  <span>→</span>
+              <p className="text-base text-gray-600 leading-relaxed line-clamp-3 font-light">
+                {page.excerpt}
+              </p>
+
+              <div className="flex items-center gap-4 text-sm text-gray-500 pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  <span className="text-xs">{formatDate(page.updated_at)}</span>
                 </div>
+                <Badge variant="secondary" className="text-xs font-mono">
+                  v{page.version}
+                </Badge>
               </div>
             </div>
-          </article>
-        </Link>
+          </Link>
+          <Separator className="mt-12 bg-gray-200" />
+        </article>
       ))}
     </div>
   );

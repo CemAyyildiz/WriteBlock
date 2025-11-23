@@ -1,24 +1,29 @@
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 interface ErrorStateProps {
   error: string;
 }
 
 export default function ErrorState({ error }: ErrorStateProps) {
   return (
-    <div className="max-w-7xl mx-auto px-6 py-24 text-center">
-      <div className="text-7xl mb-6">⚠️</div>
-      <h2 className="text-3xl font-bold text-navy-800 dark:text-navy-200 mb-4">
-        Failed to Load Articles
+    <div className="max-w-2xl mx-auto px-6 py-32 text-center">
+      <AlertCircle className="w-12 h-12 mx-auto text-gray-400 mb-6" strokeWidth={1.5} />
+      <h2 className="text-2xl font-serif font-semibold text-gray-900 mb-3 tracking-tight">
+        Unable to Load Articles
       </h2>
-      <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+      <p className="text-base text-gray-600 mb-8 leading-relaxed max-w-md mx-auto">
         {error}
       </p>
-      <button
+      <Button
         onClick={() => window.location.reload()}
-        className="modern-button inline-flex items-center gap-2"
+        variant="outline"
+        size="default"
+        className="rounded-full gap-2"
       >
-        <span>🔄</span>
-        <span>Retry</span>
-      </button>
+        <RefreshCw className="w-4 h-4" />
+        <span>Try Again</span>
+      </Button>
     </div>
   );
 }

@@ -132,7 +132,7 @@ export default function Dashboard() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+      <div className="min-h-screen bg-white antialiased">
         <Navbar />
         <LoadingState />
       </div>
@@ -142,7 +142,7 @@ export default function Dashboard() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-off-white dark:bg-navy-950">
+      <div className="min-h-screen bg-white antialiased">
         <Navbar />
         <ErrorState error={error} />
       </div>
@@ -150,15 +150,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-off-white dark:bg-navy-950">
+    <div className="min-h-screen bg-white antialiased">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-6 sm:px-8 py-16">
         <HeaderSection totalPages={pages.length} />
         <StatsGrid />
         <ArticlesList pages={pages} />
         <InfoSection />
-      </div>
+      </main>
     </div>
   );
 }
