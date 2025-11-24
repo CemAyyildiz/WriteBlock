@@ -69,20 +69,22 @@ export function useWalletCapabilities(): WalletCapabilities {
         const wallet = getWalletClient();
         const caps = await wallet.getUserCapabilities(currentAccount.address);
 
-        // Set capabilities and determine role based on what user actually owns
+        // Set all capabilities first
         if (caps.adminCapId) {
           setAdminCapId(caps.adminCapId);
+        }
+        
+        if (caps.authorCapId) {
+          setAuthorCapId(caps.authorCapId);
+        }
+
+        // Determine role based on highest privilege
+        if (caps.adminCapId) {
           setRole('admin');
         } else if (caps.authorCapId) {
-          setAuthorCapId(caps.authorCapId);
           setRole('author');
         } else {
           setRole('viewer');
-        }
-
-        // Also set author capability if exists (admin can also be author)
-        if (caps.authorCapId) {
-          setAuthorCapId(caps.authorCapId);
         }
 
         // Get registry ID

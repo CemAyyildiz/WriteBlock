@@ -83,11 +83,9 @@ export class WalrusStorageClient implements IStorageClient {
         }
 
         const content = await response.text();
-        console.log('✅ Download successful via Vercel API, size:', content.length);
         return content;
       } else {
         // Vercel - API route kullan
-        console.log('🐋 Downloading via API route:', blobId);
         const response = await fetch(`/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
         
         if (!response.ok) {
@@ -96,7 +94,6 @@ export class WalrusStorageClient implements IStorageClient {
         }
 
         const content = await response.text();
-        console.log('✅ Download successful, size:', content.length);
         return content;
       }
     } catch (error: any) {

@@ -30,7 +30,6 @@ export function getStorageClient(): IStorageClient {
       case 'walrus':
       default:
         storageClient = new WalrusStorageClient();
-        console.log('🐋 Using Walrus Storage');
         break;
     }
   }
@@ -46,7 +45,6 @@ export function getBlockchainClient(): IBlockchainClient {
       case 'sui':
       default:
         blockchainClient = new SuiBlockchainClient();
-        console.log('⛓️  Using Sui Blockchain');
         break;
     }
   }
@@ -62,7 +60,6 @@ export function getWalletClient(): IWalletClient {
       case 'sui':
       default:
         walletClient = new SuiWalletClient();
-        console.log('👛 Using Sui Wallet');
         break;
     }
   }

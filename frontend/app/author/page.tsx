@@ -22,7 +22,7 @@ import { generateSlug } from '@/lib/utils/format';
 export default function AuthorPage() {
   const router = useRouter();
   const currentAccount = useCurrentAccount();
-  const { authorCapId, registryId } = useWalletCapabilities();
+  const { authorCapId, adminCapId, registryId } = useWalletCapabilities();
   const { pages, pageObjectIds, fetchUserPages } = useUserPages();
   const { editRequests, fetchEditRequestsContent } = useEditRequests();
   const { toasts, hideToast, success, error, warning } = useToast();
@@ -68,7 +68,6 @@ export default function AuthorPage() {
         try {
           const pageObjectId = pageObjectIds.get(page.page_id);
           if (!pageObjectId) {
-            console.warn(`Page object ID not found for page ${page.page_id}`);
             continue;
           }
 
@@ -78,7 +77,7 @@ export default function AuthorPage() {
             await fetchEditRequestsContent(page.page_id, requests);
           }
         } catch (err) {
-          console.warn(`Failed to fetch edit requests for page ${page.page_id}:`, err);
+          // Skip failed requests
         }
       }
     };
@@ -126,7 +125,7 @@ export default function AuthorPage() {
               break;
             }
           } catch (err) {
-            console.warn(`Failed to check page ${pageId}:`, err);
+            // Skip failed check
           }
         }
       } catch (error) {
@@ -184,15 +183,12 @@ export default function AuthorPage() {
       };
 
       const walrusBlobId = await storageClient.upload(JSON.stringify(blobData));
-      console.log('✅ Content uploaded to Walrus:', walrusBlobId);
 
       const txResult = await blockchainClient.createPage(authorCapId, registryId, walrusBlobId);
 
       if (!txResult.success) {
         throw new Error(txResult.error || 'Failed to create page');
       }
-
-      console.log('✅ Page created on blockchain:', txResult.txHash);
 
       setSaveSuccess(true);
       setTxInfo({
@@ -246,7 +242,6 @@ export default function AuthorPage() {
       };
 
       const walrusBlobId = await storageClient.upload(JSON.stringify(blobData));
-      console.log('✅ Updated content uploaded to Walrus:', walrusBlobId);
 
       const pageObjectId = pageObjectIds.get(editingPage.page_id);
       if (!pageObjectId) {
@@ -262,8 +257,6 @@ export default function AuthorPage() {
       if (!txResult.success) {
         throw new Error(txResult.error || 'Failed to update page');
       }
-
-      console.log('✅ Page updated on blockchain:', txResult.txHash);
 
       success('Article updated successfully!');
       
@@ -329,7 +322,6 @@ export default function AuthorPage() {
         throw new Error(txResult.error || 'Failed to delete page');
       }
 
-      console.log('✅ Page deleted:', txResult.txHash);
       success('Article deleted successfully!');
 
       if (currentAccount?.address) {
@@ -403,7 +395,6 @@ export default function AuthorPage() {
         throw new Error(txResult.error || 'Failed to reject request');
       }
 
-      console.log('✅ Edit request rejected:', txResult.txHash);
       success('Edit request rejected successfully');
 
       if (currentAccount?.address) {

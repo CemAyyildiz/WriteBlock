@@ -250,9 +250,6 @@ export class SuiWalletClient implements IWalletClient {
         return [];
       }
       
-      console.log('🔍 Admin address:', adminAddress);
-      console.log('📋 Querying admin transaction history...');
-      
       // Admin'in transaction'larını query et
       const txResponse = await this.client.queryTransactionBlocks({
         filter: {
@@ -265,8 +262,6 @@ export class SuiWalletClient implements IWalletClient {
         },
         limit: 100,
       });
-      
-      console.log('✅ Found', txResponse.data.length, 'transactions');
       
       const authors: any[] = [];
       const seenAddresses = new Set<string>();
@@ -306,7 +301,6 @@ export class SuiWalletClient implements IWalletClient {
                         issued_at: timestamp,
                         tx_digest: tx.digest,
                       });
-                      console.log('✅ Found author:', recipient);
                     }
                   }
                 }
@@ -316,7 +310,6 @@ export class SuiWalletClient implements IWalletClient {
         }
       }
       
-      console.log('📋 Total authors found:', authors.length);
       return authors;
     } catch (error) {
       console.error('Error querying author capabilities from admin transactions:', error);

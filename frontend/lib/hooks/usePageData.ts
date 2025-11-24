@@ -58,7 +58,6 @@ export function usePages() {
 
       if (!envRegistryId) {
         const msg = 'Registry ID not configured. Please set NEXT_PUBLIC_REGISTRY_ID in environment variables. Deploy smart contract and update the environment variable.';
-        console.warn(msg);
         setError(msg);
         setLoading(false);
         return [];
@@ -87,7 +86,6 @@ export function usePages() {
             slug = parsed.slug;
             markdownContent = parsed.markdownContent;
           } catch (err) {
-            console.warn(`Failed to fetch content for page ${metadata.pageId}:`, err);
             excerpt = 'Content stored on decentralized storage';
           }
 
@@ -104,7 +102,7 @@ export function usePages() {
             markdown_content: markdownContent,
           });
         } catch (err) {
-          console.warn(`Failed to fetch page ${pageId}:`, err);
+          // Skip failed pages
         }
       }
 
@@ -185,7 +183,7 @@ export function useUserPages() {
             slug = parsed.slug;
             markdownContent = parsed.markdownContent;
           } catch (err) {
-            console.warn(`Failed to fetch content for page ${metadata.pageId}:`, err);
+            // Content fetch failed
           }
 
           userPages.push({
@@ -201,7 +199,7 @@ export function useUserPages() {
             markdown_content: markdownContent,
           });
         } catch (err) {
-          console.warn(`Failed to fetch page ${pageObjectId}:`, err);
+          // Skip failed page
         }
       }
 

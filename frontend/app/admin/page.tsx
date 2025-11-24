@@ -28,7 +28,6 @@ const getRegistryBlobId = (): string | null => {
 const saveRegistryBlobId = (blobId: string) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem(AUTHOR_REQUESTS_STORAGE_KEY, blobId);
-  console.log('📝 Registry blob ID saved:', blobId);
 };
 
 export default function AdminPage() {
@@ -73,19 +72,15 @@ export default function AdminPage() {
         
         if (registryBlobId) {
           try {
-            console.log('📥 Fetching author requests from blob:', registryBlobId);
             const registryContent = await storageClient.download(registryBlobId);
             const requests: AuthorRequest[] = JSON.parse(registryContent);
-            console.log('✅ Found', requests.length, 'author requests');
             setAuthorRequests(requests);
           } catch (err: any) {
             // Registry doesn't exist yet - that's okay
             if (!err?.message?.includes('404')) {
-              console.warn('Error fetching author requests:', err);
+              // Silent fail for non-404 errors
             }
           }
-        } else {
-          console.log('ℹ️ No author requests registry found yet');
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -133,7 +128,6 @@ export default function AdminPage() {
       const storageClient = getStorageClient();
       const newBlobId = await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
       saveRegistryBlobId(newBlobId);
-      console.log('✅ Updated registry saved with new blob ID:', newBlobId);
 
       // Refresh authors list
       setTimeout(async () => {
@@ -179,7 +173,6 @@ export default function AdminPage() {
       const storageClient = getStorageClient();
       const newBlobId = await storageClient.upload(JSON.stringify(updatedRequests, null, 2));
       saveRegistryBlobId(newBlobId);
-      console.log('✅ Updated registry saved with new blob ID:', newBlobId);
 
       success(`Request from ${request.name} has been rejected.`);
     } catch (err) {
