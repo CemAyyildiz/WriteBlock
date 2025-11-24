@@ -102,3 +102,25 @@ export function truncateText(text: string, maxLength: number): string {
   return text.substring(0, maxLength) + '...';
 }
 
+/**
+ * Detect if running on Walrus Sites
+ */
+export function isWalrusSite(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  const hostname = window.location.hostname;
+  return (
+    hostname.includes('walrus.site') ||
+    hostname.includes('walrus.space') ||
+    hostname.includes('trwal.app')
+  );
+}
+
+/**
+ * Get API base URL - use Vercel proxy when on Walrus Sites
+ */
+export function getApiBase(): string {
+  return isWalrusSite() ? 'https://writeblock.vercel.app' : '';
+}
+
+

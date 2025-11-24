@@ -4,6 +4,7 @@
  */
 
 import { IStorageClient, BlobMetadata } from '../interfaces/storage.interface';
+import { getApiBase, isWalrusSite } from '../utils/format';
 
 export class WalrusStorageClient implements IStorageClient {
   private publisherUrl: string;
@@ -35,12 +36,7 @@ export class WalrusStorageClient implements IStorageClient {
       }
 
       // API route - Walrus Sites'ta Vercel backend'e yönlendir
-      const apiBase = typeof window !== 'undefined' && 
-        (window.location.hostname.includes('walrus.site') || 
-         window.location.hostname.includes('walrus.space') ||
-         window.location.hostname.includes('trwal.app'))
-        ? 'https://writeblock.vercel.app'
-        : '';
+      const apiBase = getApiBase();
       const response = await fetch(`${apiBase}/api/walrus/upload`, {
         method: 'POST',
         body: bodyContent,
@@ -70,30 +66,24 @@ export class WalrusStorageClient implements IStorageClient {
 
   /**
    * Download content from Walrus storage
-   * Walrus Sites'ta direkt aggregator'a gider, Vercel'de API route kullanır
+   * Walrus Sites'ta Vercel API kullanır, Vercel'de API route kullanır
    * @param blobId - Blob ID to download
    * @returns Content as string
    */
   async download(blobId: string): Promise<string> {
     try {
-      // Walrus Sites'ta mıyız kontrol et
-      const isWalrusSite = typeof window !== 'undefined' && 
-        (window.location.hostname.includes('walrus.site') || 
-         window.location.hostname.includes('walrus.space') ||
-         window.location.hostname.includes('trwal.app'));
-
-      if (isWalrusSite) {
-        // Walrus Sites - Vercel API'yi proxy olarak kullan
-        console.log('🐋 Downloading via Vercel API proxy:', blobId);
-        const response = await fetch(`https://writeblock.vercel.app/api/walrus/download?blobId=${encodeURIComponent(blobId)}`);
+      if (isWalrusSite()) {
+        // Walrus Sites - Vercel API'sine proxy yap
+        console.log('🐋 Downloading from Vercel API:', blobId);
+        const vercelApiUrl = 'https://writeblock.vercel.app/api/walrus/download';
+        const response = await fetch(`${vercelApiUrl}?blobId=${encodeURIComponent(blobId)}`);
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: response.statusText }));
-          throw new Error(`API download failed: ${errorData.error || response.statusText}`);
+          throw new Error(`Download failed: ${response.status}`);
         }
 
         const content = await response.text();
-        console.log('✅ Download successful via proxy, size:', content.length);
+        console.log('✅ Download successful via Vercel API, size:', content.length);
         return content;
       } else {
         // Vercel - API route kullan
